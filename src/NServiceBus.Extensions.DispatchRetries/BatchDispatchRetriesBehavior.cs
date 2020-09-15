@@ -5,16 +5,16 @@ using Polly;
 
 namespace NServiceBus.Extensions.DispatchRetries
 {
-    public class DispatchRetriesBehavior : Behavior<IOutgoingPhysicalMessageContext>
+    public class BatchDispatchRetriesBehavior : Behavior<IBatchDispatchContext>
     {
         private readonly AsyncPolicy _defaultRetryPolicy;
 
-        public DispatchRetriesBehavior(AsyncPolicy defaultRetryPolicy)
+        public BatchDispatchRetriesBehavior(AsyncPolicy defaultRetryPolicy)
         {
             _defaultRetryPolicy = defaultRetryPolicy;
         }
 
-        public override Task Invoke(IOutgoingPhysicalMessageContext context, Func<Task> next)
+        public override Task Invoke(IBatchDispatchContext context, Func<Task> next)
         {
             return _defaultRetryPolicy.ExecuteAsync(next);
         }

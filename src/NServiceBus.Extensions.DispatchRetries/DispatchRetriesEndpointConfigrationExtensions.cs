@@ -15,17 +15,28 @@ namespace NServiceBus
 
         public static void EnableDispatchRetries(this EndpointConfiguration configuration, AsyncPolicy defaultRetryPolicy)
         {
+            EnableDispatchRetries(configuration, defaultRetryPolicy, defaultRetryPolicy);
+        }
+
+        public static void EnableDispatchRetries(this EndpointConfiguration configuration, AsyncPolicy batchDispatchRetryPolicy, AsyncPolicy immediateDispatchRetryPolicy)
+        {
             if (configuration == null)
             {
                 throw new ArgumentNullException(nameof(configuration));
             }
-            
-            if (defaultRetryPolicy == null)
+
+            if (batchDispatchRetryPolicy == null)
             {
-                throw new ArgumentNullException(nameof(defaultRetryPolicy));
+                throw new ArgumentNullException(nameof(batchDispatchRetryPolicy));
             }
-            
-            configuration.Pipeline.Register(new DispatchRetriesBehavior(defaultRetryPolicy), "Dispatch retries behavior based on Polly.");
+
+            if (immediateDispatchRetryPolicy == null)
+            {
+                throw new ArgumentNullException(nameof(immediateDispatchRetryPolicy));
+            }
+
+            configuration.Pipeline.Register(new BatchDispatchRetriesBehavior(batchDispatchRetryPolicy), "Batch dispatch retries behavior based on Polly.");
+            configuration.Pipeline.Register(new ImmediateDispatchRetriesBehavior(immediateDispatchRetryPolicy), "Immediate dispatch retries behavior based on Polly.");
         }
     }
 }
