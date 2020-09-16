@@ -6,11 +6,15 @@ NServiceBus.Extensions.DispatchRetries is designed to allow to plug in [Polly](h
 
 ## Basic usage
 
-```
+```csharp
+var endpointConfiguration = new EndpointConfigiration("myEndpointName");
+
+//define a Polly policy
 var retryPolicy = Policy.RetryAsync(3);
 
-var endpointConfiguration = new EndpointConfigiration("myEndpointName");
 var dispatchRetriesConfig = endpointConfiguration.DispatchRetries();
+
+//enable immediate dispatch retries using the defined policy
 dispatchRetriesConfig.EnableImmediateDispatchRetries(retryProlicy);
 ```
 
