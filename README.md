@@ -20,4 +20,4 @@ dispatchRetriesConfig.EnableImmediateDispatchRetries(retryProlicy);
 
 ---
 
-[Mail by Flatart](https://thenounproject.com/search/?q=Retry&i=2886080) from the Noun Project
+Icon [Mail by Flatart](https://thenounproject.com/search/?q=Retry&i=2886080) from the Noun Project
