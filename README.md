@@ -35,7 +35,7 @@ NServiceBus.Extensions.DispatchRetries can be configured to introduce a Polly as
 ```csharp
 var endpointConfiguration = new EndpointConfigiration("myEndpointName");
 
-//Enable DispatchRetries Feature
+//enable DispatchRetries Feature
 var dispatchRetriesConfig = endpointConfiguration.DispatchRetries();
 
 //define a Polly policy
@@ -110,7 +110,7 @@ Basic configuration:
 ```csharp
 var endpointConfiguration = new EndpointConfigiration("myEndpointName");
 
-//Enable DispatchRetries Feature
+//enable DispatchRetries Feature
 var dispatchRetriesConfig = endpointConfiguration.DispatchRetries();
 
 //define a Polly policy
@@ -153,9 +153,13 @@ class MyMessageHandler : IHandleMessages<MyMessage>
 }
 ```
 
-## A not on the NServiceBus Outbox
+#### A not on the NServiceBus Outbox
 
 NServiceBus.Extensions.DispatchRetries works with the [NServiceBus Outbox](https://docs.particular.net/nservicebus/outbox/) as well. Due to the way the outbox is implemented the policy applied to outgoing messages is always the immediate dispatch policy when using the outbox.
+
+## How to install
+
+Using a package manager add a nuget reference to [NServiceBus.Extensions.DispatchRetries](https://www.nuget.org/packages/NServiceBus.Extensions.DispatchRetries/).
 
 ---
 
