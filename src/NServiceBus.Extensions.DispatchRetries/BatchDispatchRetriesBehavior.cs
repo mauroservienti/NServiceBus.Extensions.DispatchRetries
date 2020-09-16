@@ -1,22 +1,28 @@
 ﻿using System;
 using System.Threading.Tasks;
 using NServiceBus.Pipeline;
+using NServiceBus.Settings;
 using Polly;
 
 namespace NServiceBus.Extensions.DispatchRetries
 {
     public class BatchDispatchRetriesBehavior : Behavior<IBatchDispatchContext>
     {
-        private readonly AsyncPolicy _defaultRetryPolicy;
+        private readonly ReadOnlySettings _readOnlySettings;
 
-        public BatchDispatchRetriesBehavior(AsyncPolicy defaultRetryPolicy)
+        public BatchDispatchRetriesBehavior(ReadOnlySettings readOnlySettings)
         {
-            _defaultRetryPolicy = defaultRetryPolicy;
+            _readOnlySettings = readOnlySettings;
         }
 
         public override Task Invoke(IBatchDispatchContext context, Func<Task> next)
         {
-            return _defaultRetryPolicy.ExecuteAsync(next);
+            if (_readOnlySettings.TryGet("default-batch-dispatch-retry-policy", out AsyncPolicy defaultRetryPolicy))
+            {
+                return defaultRetryPolicy.ExecuteAsync(next);
+            }
+
+            return next();
         }
     }
 }
