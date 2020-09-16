@@ -4,7 +4,7 @@ using NServiceBus.Pipeline;
 using NServiceBus.Settings;
 using Polly;
 
-namespace NServiceBus.Extensions.DispatchRetries
+namespace NServiceBus.Extensions.DispatchRetries.Behaviors
 {
     public class BatchDispatchRetriesBehavior : Behavior<IBatchDispatchContext>
     {
@@ -17,7 +17,12 @@ namespace NServiceBus.Extensions.DispatchRetries
 
         public override Task Invoke(IBatchDispatchContext context, Func<Task> next)
         {
-            if (_readOnlySettings.TryGet("default-batch-dispatch-retry-policy", out AsyncPolicy defaultRetryPolicy))
+            if (context.Extensions.TryGet(Constants.BatchDispatchRetryPolicy, out AsyncPolicy retryPolicy))
+            {
+                return retryPolicy.ExecuteAsync(next);
+            }
+
+            if (_readOnlySettings.TryGet(Constants.DefaultBatchDispatchRetryPolicy, out AsyncPolicy defaultRetryPolicy))
             {
                 return defaultRetryPolicy.ExecuteAsync(next);
             }

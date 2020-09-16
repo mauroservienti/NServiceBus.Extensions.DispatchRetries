@@ -6,7 +6,7 @@ using NServiceBus.Settings;
 using NServiceBus.Transport;
 using Polly;
 
-namespace NServiceBus.Extensions.DispatchRetries
+namespace NServiceBus.Extensions.DispatchRetries.Behaviors
 {
     public class ImmediateDispatchRetriesBehavior : Behavior<IDispatchContext>
     {
@@ -20,7 +20,12 @@ namespace NServiceBus.Extensions.DispatchRetries
         public override Task Invoke(IDispatchContext context, Func<Task> next)
         {
             var isImmediate = context.Operations.All(op => op.RequiredDispatchConsistency == DispatchConsistency.Isolated);
-            if (isImmediate && _readOnlySettings.TryGet("default-immediate-dispatch-retry-policy", out AsyncPolicy defaultRetryPolicy))
+            if (isImmediate && context.Extensions.TryGet(Constants.ImmediateDispatchRetryPolicy, out AsyncPolicy retryPolicy))
+            {
+                return retryPolicy.ExecuteAsync(next);
+            }
+
+            if (isImmediate && _readOnlySettings.TryGet(Constants.DefaultImmediateDispatchRetryPolicy, out AsyncPolicy defaultRetryPolicy))
             {
                 return defaultRetryPolicy.ExecuteAsync(next);
             }

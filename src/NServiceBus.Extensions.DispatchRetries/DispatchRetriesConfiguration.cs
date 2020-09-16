@@ -1,6 +1,7 @@
 ﻿using System;
 using NServiceBus.Configuration.AdvancedExtensibility;
 using NServiceBus.Extensions.DispatchRetries;
+using NServiceBus.Extensions.DispatchRetries.Features;
 using Polly;
 
 namespace NServiceBus
@@ -23,7 +24,7 @@ namespace NServiceBus
                 throw new ArgumentNullException(nameof(immediateDispatchRetryPolicy));
             }
 
-            _configuration.GetSettings().Set("default-immediate-dispatch-retry-policy", immediateDispatchRetryPolicy);
+            _configuration.GetSettings().Set(Constants.DefaultImmediateDispatchRetryPolicy, immediateDispatchRetryPolicy);
         }
 
         public void DefaultBatchDispatchRetriesPolicy(AsyncPolicy batchDispatchRetryPolicy)
@@ -33,7 +34,7 @@ namespace NServiceBus
                 throw new ArgumentNullException(nameof(batchDispatchRetryPolicy));
             }
 
-            _configuration.GetSettings().Set("default-batch-dispatch-retry-policy", batchDispatchRetryPolicy);
+            _configuration.GetSettings().Set(Constants.DefaultBatchDispatchRetryPolicy, batchDispatchRetryPolicy);
         }
     }
 }

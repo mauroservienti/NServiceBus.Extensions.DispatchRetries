@@ -1,6 +1,7 @@
-﻿using NServiceBus.Features;
+﻿using NServiceBus.Extensions.DispatchRetries.Behaviors;
+using NServiceBus.Features;
 
-namespace NServiceBus.Extensions.DispatchRetries
+namespace NServiceBus.Extensions.DispatchRetries.Features
 {
     public class DispatchRetriesFeature : Feature
     {
