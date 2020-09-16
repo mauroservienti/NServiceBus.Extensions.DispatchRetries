@@ -1,4 +1,4 @@
-(icon here)
+<img src="assets/icon.png" width="100" />
 
 # NServiceBus.Extensions.DispatchRetries
 
