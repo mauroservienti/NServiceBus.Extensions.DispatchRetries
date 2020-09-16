@@ -1,4 +1,5 @@
 ﻿using System;
+using NServiceBus.Configuration.AdvancedExtensibility;
 using NServiceBus.Extensions.DispatchRetries;
 using Polly;
 
@@ -11,26 +12,28 @@ namespace NServiceBus
         internal DispatchRetriesConfiguration(EndpointConfiguration configuration)
         {
             _configuration = configuration;
+
+            configuration.EnableFeature<DispatchRetriesFeature>();
         }
 
-        public void EnableImmediateDispatchRetries(AsyncPolicy immediateDispatchRetryPolicy)
+        public void DefaultDImmediateDispatchRetriesPolicy(AsyncPolicy immediateDispatchRetryPolicy)
         {
             if (immediateDispatchRetryPolicy == null)
             {
                 throw new ArgumentNullException(nameof(immediateDispatchRetryPolicy));
             }
 
-            _configuration.Pipeline.Register(new ImmediateDispatchRetriesBehavior(immediateDispatchRetryPolicy), "Immediate dispatch retries behavior based on Polly.");
+            _configuration.GetSettings().Set("default-immediate-dispatch-retry-policy", immediateDispatchRetryPolicy);
         }
 
-        public void EnableBatchDispatchRetries(AsyncPolicy batchDispatchRetryPolicy)
+        public void DefaultBatchDispatchRetriesPolicy(AsyncPolicy batchDispatchRetryPolicy)
         {
             if (batchDispatchRetryPolicy == null)
             {
                 throw new ArgumentNullException(nameof(batchDispatchRetryPolicy));
             }
 
-            _configuration.Pipeline.Register(new BatchDispatchRetriesBehavior(batchDispatchRetryPolicy), "Batch dispatch retries behavior based on Polly.");
+            _configuration.GetSettings().Set("default-batch-dispatch-retry-policy", batchDispatchRetryPolicy);
         }
     }
 }
