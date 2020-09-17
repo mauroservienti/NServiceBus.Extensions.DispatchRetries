@@ -8,7 +8,7 @@ NServiceBus.Extensions.DispatchRetries is designed to allow to plug in [Polly](h
 
 There are cases in which the quality of the connection between the NServiceBus endpoint and the underlying transport infrastructure is poor. In such environments it might happen that a message dispatch operation fails due to a failure in connecting to the underlying transport.
 
-The most common scenario being handling an incoming HTTP request that needs to be tranformed into a message for a background service:
+The most common scenario being handling an incoming HTTP request that needs to be transformed into a message for a background service:
 
 ```csharp
 class MyController
