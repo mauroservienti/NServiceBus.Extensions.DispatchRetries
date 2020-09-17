@@ -6,9 +6,9 @@ NServiceBus.Extensions.DispatchRetries is designed to allow to plug in [Polly](h
 
 ## Unreliable environments
 
-There are cases in which the quality of the connection between the NServiceBus endpoint and the underlying transport infrastructure is poor. In such environments it might happen that a message dispatch operation fails due to a failure in connecting to the underlying transport.
+There are cases in which the quality of the connection between the NServiceBus endpoint and the underlying transport infrastructure is poor. In such environments, it might happen that a message dispatch operation fails due to a failure in connecting to the underlying transport.
 
-The most common scenario being handling an incoming HTTP request that needs to be transformed into a message for a background service:
+The most common scenario is handling an incoming HTTP request that needs to be transformed into a message for a background service:
 
 ```csharp
 class MyController
@@ -28,7 +28,7 @@ class MyController
 }
 ```
 
-In unrealiable environments if the above send operation fails an excpetion will be thrown and will eventually result in a HTTP500 returned to the caller. Most of the times retrying is a good enough countermeasure that will succeed.
+In unreliable environments, if the above send operation fails, an exception will be thrown and will eventually result in a HTTP500 returned to the caller. Most of the time, retrying is a good enough countermeasure that will succeed.
 
 NServiceBus.Extensions.DispatchRetries can be configured to introduce a Polly async policy into the NServiceBus outgoing pipeline to atomatically retry dispatch operations:
 
@@ -53,7 +53,7 @@ A dispatch operation is the final act of the message sending request. The dispat
 
 ### Batch dispatch operations
 
-By default NServiceBus batches dispatch operations that happen in the context of an incoming message, using the following snippet as a sample:
+By default, NServiceBus batches dispatch operations that happen in the context of an incoming message, using the following snippet as a sample:
 
 ```csharp
 class MyMessageHandler : IHandleMessages<MyMessage>
@@ -66,7 +66,7 @@ class MyMessageHandler : IHandleMessages<MyMessage>
 }
 ```
 
-Both `MyOtherMessage1` and `MyOtherMessage2` will be dispatch to the transport in a batch. The actual send operation does not happen immidiately, it happens when messages are dispatched to the transport at the very end of the pipeline execution.
+Both `MyOtherMessage1` and `MyOtherMessage2` will be dispatch to the transport in a batch. The actual send operation does not happen immediately, it happens when messages are dispatched to the transport at the very end of the pipeline execution.
 
 ### Immediate dispatch operations
 
@@ -91,9 +91,9 @@ class MyMessageHandler : IHandleMessages<MyMessage>
 }
 ```
 
-In the above snippet `MyOtherMessage1` and `MyOtherMessage2` are dispatched immidiately, `MyOtherMessage3` and `MyOtherMessage4` are batched.
+In the above snippet `MyOtherMessage1` and `MyOtherMessage2` are dispatched immediately, `MyOtherMessage3` and `MyOtherMessage4` are batched.
 
-All message operations outside the context of an incoming message are dispatched immidiately.
+All message operations outside the context of an incoming message are dispatched immediately.
 
 ```csharp
 var endpointInstance = await Endpoint.Start(endpointConfiguration);
@@ -101,7 +101,7 @@ await endpointInstance.Send(new AMessage());
 await endpointInstance.Send(new AnotherMessage());
 ```
 
-In this last case, both `AMessage` and `AnotherMessage` are always dispatched immidiately without using any batching.
+In this last case, both `AMessage` and `AnotherMessage` are always dispatched immediately without using any batching.
 
 ## Usage
 
@@ -132,7 +132,7 @@ var retryPolicy = Policy.RetryAsync(3);
 dispatchRetriesConfig.DefaultBatchDispatchRetriesPolicy(retryProlicy);
 ```
 
-It's important to keep in mind the impact that retrying batch operations can have. When handling an incoming message there is an implicit timeout surrounding the message processing. This timeout can be enforced by the underlying infrastructure or by surrounding transactions. In this context retrying a batch dispatch counts towards reaching any infrastructure or transaction timeout. Unless it is strictly necessary it's better to let the [NServiceBus recoverability](https://docs.particular.net/nservicebus/recoverability/) mechanism to handle the failure. There cases, though, in which retrying an incoming message to handle a dispatch failure might not be desirable and it might be better to retry a few times the dispatch operation before reverting to the built-in recoverability mechanism. In essence: handle with care.
+It's important to keep in mind the impact that retrying batch operations can have. When handling an incoming message there is an implicit timeout surrounding the message processing. This timeout can be enforced by the underlying infrastructure or by surrounding transactions. In this context, retrying a batch dispatch counts towards reaching any infrastructure or transaction timeout. Unless it is strictly necessary, it's better to let the [NServiceBus recoverability](https://docs.particular.net/nservicebus/recoverability/) mechanism to handle the failure. There are cases, though, in which retrying an incoming message to handle a dispatch failure might not be desirable, and it might be better to retry a few times the dispatch operation before reverting to the built-in recoverability mechanism. In essence: handle with care.
 
 ### Overrides
 
@@ -161,7 +161,7 @@ NServiceBus.Extensions.DispatchRetries works with the [NServiceBus Outbox](https
 
 ## How to install
 
-Using a package manager add a nuget reference to [NServiceBus.Extensions.DispatchRetries](https://www.nuget.org/packages/NServiceBus.Extensions.DispatchRetries/).
+Using a package manager, add a nuget reference to [NServiceBus.Extensions.DispatchRetries](https://www.nuget.org/packages/NServiceBus.Extensions.DispatchRetries/).
 
 ---
 
