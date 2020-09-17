@@ -132,7 +132,7 @@ var retryPolicy = Policy.RetryAsync(3);
 dispatchRetriesConfig.DefaultBatchDispatchRetriesPolicy(retryProlicy);
 ```
 
-It's important to keepo in mind the impact that retrying batch operations can have. When handling an incoming message there an implicit timeout surrounding the message processing. This timeout can be enforced by the underlying infrastructure or by surrounding transactions. In this context retrying a batch dispatch counts towards reaching any infrastructure or transaction timeout. Unless it is strictly necessary it's better to let the [NServiceBus recoverability](https://docs.particular.net/nservicebus/recoverability/) mechanism to handle the failure. There cases, though, in which retrying an incoming message to handle a dispatch failure might not be desirable and it might be better to retry a few times the dispatch operation before reverting to the built-in recoverability mechanism. In essence: handle with care.
+It's important to keep in mind the impact that retrying batch operations can have. When handling an incoming message there is an implicit timeout surrounding the message processing. This timeout can be enforced by the underlying infrastructure or by surrounding transactions. In this context retrying a batch dispatch counts towards reaching any infrastructure or transaction timeout. Unless it is strictly necessary it's better to let the [NServiceBus recoverability](https://docs.particular.net/nservicebus/recoverability/) mechanism to handle the failure. There cases, though, in which retrying an incoming message to handle a dispatch failure might not be desirable and it might be better to retry a few times the dispatch operation before reverting to the built-in recoverability mechanism. In essence: handle with care.
 
 ### Overrides
 
@@ -153,7 +153,9 @@ class MyMessageHandler : IHandleMessages<MyMessage>
 }
 ```
 
-#### A not on the NServiceBus Outbox
+`OverrideBatchDispatchRetryPolicy` can be used in a similar fashion to override the default batch dispatch retries policy.
+
+#### A note on the NServiceBus Outbox
 
 NServiceBus.Extensions.DispatchRetries works with the [NServiceBus Outbox](https://docs.particular.net/nservicebus/outbox/) as well. Due to the way the outbox is implemented the policy applied to outgoing messages is always the immediate dispatch policy when using the outbox.
 
