@@ -10,11 +10,11 @@ namespace NServiceBus.Extensions.DispatchRetries.Behaviors
 {
     public class ImmediateDispatchRetriesBehavior : Behavior<IDispatchContext>
     {
-        private readonly ReadOnlySettings _readOnlySettings;
+        private readonly AsyncPolicy _defaultRetryPolicy;
 
         public ImmediateDispatchRetriesBehavior(ReadOnlySettings readOnlySettings)
         {
-            _readOnlySettings = readOnlySettings;
+            readOnlySettings.TryGet(Constants.DefaultImmediateDispatchRetryPolicy, out _defaultRetryPolicy);
         }
 
         public override Task Invoke(IDispatchContext context, Func<Task> next)
@@ -25,9 +25,9 @@ namespace NServiceBus.Extensions.DispatchRetries.Behaviors
                 return retryPolicy.ExecuteAsync(next);
             }
 
-            if (isImmediate && _readOnlySettings.TryGet(Constants.DefaultImmediateDispatchRetryPolicy, out AsyncPolicy defaultRetryPolicy))
+            if (isImmediate && _defaultRetryPolicy != null)
             {
-                return defaultRetryPolicy.ExecuteAsync(next);
+                return _defaultRetryPolicy.ExecuteAsync(next);
             }
 
             return next();

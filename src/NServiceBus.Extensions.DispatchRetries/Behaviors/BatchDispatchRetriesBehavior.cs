@@ -8,11 +8,11 @@ namespace NServiceBus.Extensions.DispatchRetries.Behaviors
 {
     public class BatchDispatchRetriesBehavior : Behavior<IBatchDispatchContext>
     {
-        private readonly ReadOnlySettings _readOnlySettings;
+        private readonly AsyncPolicy _defaultRetryPolicy;
 
         public BatchDispatchRetriesBehavior(ReadOnlySettings readOnlySettings)
         {
-            _readOnlySettings = readOnlySettings;
+            readOnlySettings.TryGet(Constants.DefaultBatchDispatchRetryPolicy, out _defaultRetryPolicy);
         }
 
         public override Task Invoke(IBatchDispatchContext context, Func<Task> next)
@@ -22,9 +22,9 @@ namespace NServiceBus.Extensions.DispatchRetries.Behaviors
                 return retryPolicy.ExecuteAsync(next);
             }
 
-            if (_readOnlySettings.TryGet(Constants.DefaultBatchDispatchRetryPolicy, out AsyncPolicy defaultRetryPolicy))
+            if (_defaultRetryPolicy!= null)
             {
-                return defaultRetryPolicy.ExecuteAsync(next);
+                return _defaultRetryPolicy.ExecuteAsync(next);
             }
 
             return next();
