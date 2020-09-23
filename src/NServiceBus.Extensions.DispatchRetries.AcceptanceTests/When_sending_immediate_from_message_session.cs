@@ -7,9 +7,9 @@ using Polly;
 
 namespace NServiceBus.Extensions.DispatchRetries.AcceptanceTests
 {
-    public class When_message_dispatching_fails
+    public class When_sending_immediate_from_message_session
     {
-        private static int numberOfPollyRetries = 0;
+        private static int _numberOfPollyRetries = 0;
 
         [Test]
         public async Task should_be_retried_according_to_policy()
@@ -19,6 +19,7 @@ namespace NServiceBus.Extensions.DispatchRetries.AcceptanceTests
                 {
                     var options = new SendOptions();
                     options.SetDestination("ReceiverEndpoint");
+                    options.RequireImmediateDispatch();
 
                     return b.Send(new Message(), options);
                 }))
@@ -27,7 +28,7 @@ namespace NServiceBus.Extensions.DispatchRetries.AcceptanceTests
                 .Run();
 
             Assert.True(context.MessageReceived);
-            Assert.AreEqual(1, numberOfPollyRetries);
+            Assert.AreEqual(1, _numberOfPollyRetries);
         }
 
         class Context : ScenarioContext
@@ -45,11 +46,10 @@ namespace NServiceBus.Extensions.DispatchRetries.AcceptanceTests
                         .Handle<Exception>(ex=>true)
                         .RetryAsync(1, (exception, retryAttempt, context) =>
                         {
-                            numberOfPollyRetries++;
+                            _numberOfPollyRetries++;
                         });
 
-                    var dispatchRetriesOptions= config.DispatchRetries();
-                    dispatchRetriesOptions.DefaultImmediateDispatchRetriesPolicy(policy);
+                    var dispatchRetriesOptions= config.DispatchRetries(policy);
                 });
             }
         }

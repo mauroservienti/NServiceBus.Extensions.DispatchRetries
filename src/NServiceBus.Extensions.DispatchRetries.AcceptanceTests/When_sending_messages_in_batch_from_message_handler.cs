@@ -9,7 +9,7 @@ namespace NServiceBus.Extensions.DispatchRetries.AcceptanceTests
 {
     public class When_sending_messages_in_batch_from_message_handler
     {
-        private static int numberOfPollyRetries = 0;
+        private static int _numberOfPollyRetries = 0;
 
         [Test]
         public async Task should_be_retried_according_to_policy()
@@ -27,7 +27,7 @@ namespace NServiceBus.Extensions.DispatchRetries.AcceptanceTests
                 .Run();
 
             Assert.True(context.ReplyMessageReceived);
-            Assert.AreEqual(1, numberOfPollyRetries);
+            Assert.AreEqual(1, _numberOfPollyRetries);
         }
 
         class Context : ScenarioContext
@@ -73,7 +73,7 @@ namespace NServiceBus.Extensions.DispatchRetries.AcceptanceTests
                         .Handle<Exception>(ex=>true)
                         .RetryAsync(1, (exception, retryAttempt, context) =>
                         {
-                            numberOfPollyRetries++;
+                            _numberOfPollyRetries++;
                         });
 
                     var dispatchRetriesOptions = config.DispatchRetries();

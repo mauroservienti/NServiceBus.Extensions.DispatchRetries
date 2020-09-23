@@ -7,7 +7,7 @@ using Polly;
 
 namespace NServiceBus.Extensions.DispatchRetries.AcceptanceTests
 {
-    public class When_sending_immediate_messages_from_message_handler
+    public class When_sending_from_message_session
     {
         private static int _numberOfPollyRetries = 0;
 
@@ -23,49 +23,21 @@ namespace NServiceBus.Extensions.DispatchRetries.AcceptanceTests
                     return b.Send(new Message(), options);
                 }))
                 .WithEndpoint<ReceiverEndpoint>()
-                .Done(c => c.ReplyMessageReceived)
+                .Done(c => c.MessageReceived)
                 .Run();
 
-            Assert.True(context.ReplyMessageReceived);
+            Assert.True(context.MessageReceived);
             Assert.AreEqual(1, _numberOfPollyRetries);
         }
 
         class Context : ScenarioContext
         {
-            public bool ReplyMessageReceived { get; set; }
+            public bool MessageReceived { get; set; }
         }
 
         class SenderEndpoint : EndpointConfigurationBuilder
         {
             public SenderEndpoint()
-            {
-                EndpointSetup<DefaultServer>(config =>
-                {
-
-                });
-            }
-
-            class Handler : IHandleMessages<ReplyMessage>
-            {
-                private readonly Context _testContext;
-
-                public Handler(Context testContext)
-                {
-                    _testContext = testContext;
-                }
-
-                public Task Handle(ReplyMessage message, IMessageHandlerContext context)
-                {
-                    _testContext.ReplyMessageReceived = true;
-
-                    return Task.FromResult(0);
-                }
-            }
-        }
-
-        class ReceiverEndpoint : EndpointConfigurationBuilder
-        {
-            public ReceiverEndpoint()
             {
                 EndpointSetup<UnreliableServer>(config =>
                 {
@@ -76,30 +48,37 @@ namespace NServiceBus.Extensions.DispatchRetries.AcceptanceTests
                             _numberOfPollyRetries++;
                         });
 
-                    var dispatchRetriesOptions = config.DispatchRetries();
-                    dispatchRetriesOptions.DefaultImmediateDispatchRetriesPolicy(policy);
+                    var dispatchRetriesOptions= config.DispatchRetries(policy);
                 });
+            }
+        }
+
+        class ReceiverEndpoint : EndpointConfigurationBuilder
+        {
+            public ReceiverEndpoint()
+            {
+                EndpointSetup<DefaultServer>(config => { });
             }
 
             class Handler : IHandleMessages<Message>
             {
+                private readonly Context _testContext;
+
+                public Handler(Context testContext)
+                {
+                    _testContext = testContext;
+                }
+
                 public Task Handle(Message message, IMessageHandlerContext context)
                 {
-                    context.Extensions.Set("foo", "bar");
+                    _testContext.MessageReceived = true;
 
-                    var options = new ReplyOptions();
-                    options.RequireImmediateDispatch();
-
-                    return context.Reply(new ReplyMessage(), options);
+                    return Task.FromResult(0);
                 }
             }
         }
 
         public class Message : IMessage
-        {
-        }
-
-        public class ReplyMessage : IMessage
         {
         }
     }

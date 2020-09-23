@@ -9,8 +9,8 @@ namespace NServiceBus.Extensions.DispatchRetries.AcceptanceTests
 {
     public class When_sending_immediate_and_batched_messages_from_message_handler
     {
-        private static int numberOfImmediatePollyRetries = 0;
-        private static int numberOfBatchPollyRetries = 0;
+        private static int _numberOfImmediatePollyRetries = 0;
+        private static int _numberOfBatchPollyRetries = 0;
 
         [Test]
         public async Task should_be_retried_according_to_policy()
@@ -29,8 +29,8 @@ namespace NServiceBus.Extensions.DispatchRetries.AcceptanceTests
 
             Assert.True(context.ReplyMessageReceived);
             Assert.True(context.AnotherReplyMessageReceived);
-            Assert.AreEqual(1, numberOfImmediatePollyRetries, "Wrong number of immediate policy retries");
-            Assert.AreEqual(1, numberOfBatchPollyRetries, "Wrong number of batch policy retries");
+            Assert.AreEqual(1, _numberOfImmediatePollyRetries, "Wrong number of immediate policy retries");
+            Assert.AreEqual(1, _numberOfBatchPollyRetries, "Wrong number of batch policy retries");
         }
 
         class Context : ScenarioContext
@@ -94,14 +94,14 @@ namespace NServiceBus.Extensions.DispatchRetries.AcceptanceTests
                         .Handle<Exception>(ex=>true)
                         .RetryAsync(1, (exception, retryAttempt, context) =>
                         {
-                            numberOfBatchPollyRetries++;
+                            _numberOfBatchPollyRetries++;
                         });
 
                     var immediatePolicy = Policy
                         .Handle<Exception>(ex=>true)
                         .RetryAsync(1, (exception, retryAttempt, context) =>
                         {
-                            numberOfImmediatePollyRetries++;
+                            _numberOfImmediatePollyRetries++;
                         });
 
                     var dispatchRetriesOptions = config.DispatchRetries();
@@ -117,6 +117,7 @@ namespace NServiceBus.Extensions.DispatchRetries.AcceptanceTests
                     var options = new ReplyOptions();
                     options.RequireImmediateDispatch();
                     await context.Reply(new ReplyMessage(), options);
+
                     await context.Reply(new AnotherReplyMessage());
                 }
             }
