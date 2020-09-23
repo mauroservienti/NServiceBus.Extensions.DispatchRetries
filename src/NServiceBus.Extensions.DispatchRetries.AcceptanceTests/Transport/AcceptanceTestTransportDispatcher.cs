@@ -28,13 +28,16 @@ namespace NServiceBus
             _failDispatchOnce = failDispatchOnce;
         }
 
-        private bool failedOnce;
+        private List<string> _idsForWhichDispatchAlreadyFailedOnce = new List<string>();
 
         public Task Dispatch(TransportOperations outgoingMessages, TransportTransaction transaction, ContextBag context)
         {
-            if (_failDispatchOnce && !failedOnce)
+            var allIds = outgoingMessages.MulticastTransportOperations.Select(mto => mto.Message.MessageId).ToList();
+            allIds.AddRange(outgoingMessages.UnicastTransportOperations.Select(mto => mto.Message.MessageId));
+            var alreadyFailedOnce = allIds.All(id => _idsForWhichDispatchAlreadyFailedOnce.Contains(id));
+            if (_failDispatchOnce && !alreadyFailedOnce)
             {
-                failedOnce = true;
+                _idsForWhichDispatchAlreadyFailedOnce.AddRange(allIds);
                 throw new Exception("Bad!");
             }
 
