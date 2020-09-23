@@ -6,7 +6,7 @@ using Polly;
 
 namespace NServiceBus.Extensions.DispatchRetries.Behaviors
 {
-    public class BatchDispatchRetriesBehavior : Behavior<IBatchDispatchContext>
+    class BatchDispatchRetriesBehavior : Behavior<IBatchDispatchContext>
     {
         private readonly AsyncPolicy _defaultRetryPolicy;
 
@@ -17,9 +17,10 @@ namespace NServiceBus.Extensions.DispatchRetries.Behaviors
 
         public override Task Invoke(IBatchDispatchContext context, Func<Task> next)
         {
-            if (context.Extensions.TryGet(Constants.BatchDispatchRetryPolicy, out AsyncPolicy retryPolicy))
+            var overrides = context.Extensions.Get<DispatchRetriesOverrides>(Constants.Overrides);
+            if (overrides.BatchDispatchPolicyOverride != null)
             {
-                return retryPolicy.ExecuteAsync(next);
+                return overrides.BatchDispatchPolicyOverride.ExecuteAsync(next);
             }
 
             if (_defaultRetryPolicy!= null)

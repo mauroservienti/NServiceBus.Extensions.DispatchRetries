@@ -8,7 +8,7 @@ using Polly;
 
 namespace NServiceBus.Extensions.DispatchRetries.Behaviors
 {
-    public class ImmediateDispatchRetriesBehavior : Behavior<IDispatchContext>
+    class ImmediateDispatchRetriesBehavior : Behavior<IDispatchContext>
     {
         private readonly AsyncPolicy _defaultImmediateRetryPolicy;
         private readonly AsyncPolicy _defaultBatchRetryPolicy;
@@ -27,9 +27,10 @@ namespace NServiceBus.Extensions.DispatchRetries.Behaviors
 
         Task HandleIsolatedConsistency(IDispatchContext context, Func<Task> next)
         {
-            if (context.Extensions.TryGet(Constants.ImmediateDispatchRetryPolicy, out AsyncPolicy retryPolicy))
+            var overrides = context.Extensions.Get<DispatchRetriesOverrides>(Constants.Overrides);
+            if (overrides.ImmediateDispatchPolicyOverride != null)
             {
-                return retryPolicy.ExecuteAsync(next);
+                return overrides.ImmediateDispatchPolicyOverride.ExecuteAsync(next);
             }
 
             if (_defaultImmediateRetryPolicy != null)
@@ -42,9 +43,10 @@ namespace NServiceBus.Extensions.DispatchRetries.Behaviors
 
         Task HandleDefaultConsistency(IDispatchContext context, Func<Task> next)
         {
-            if (context.Extensions.TryGet(Constants.BatchDispatchRetryPolicy, out AsyncPolicy retryPolicy))
+            var overrides = context.Extensions.Get<DispatchRetriesOverrides>(Constants.Overrides);
+            if (overrides.BatchDispatchPolicyOverride != null)
             {
-                return retryPolicy.ExecuteAsync(next);
+                return overrides.BatchDispatchPolicyOverride.ExecuteAsync(next);
             }
 
             if (_defaultBatchRetryPolicy != null)

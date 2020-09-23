@@ -7,9 +7,10 @@ using Polly;
 
 namespace NServiceBus.Extensions.DispatchRetries.AcceptanceTests
 {
-    public class When_sending_immediate_messages_from_message_handler
+    public class When_sending_messages_in_batch_from_message_handler_and_overriding_policy
     {
         private static int _numberOfPollyRetries = 0;
+        private static int _numberOfOverriddenPollyRetries = 0;
 
         [Test]
         public async Task should_be_retried_according_to_policy()
@@ -27,7 +28,8 @@ namespace NServiceBus.Extensions.DispatchRetries.AcceptanceTests
                 .Run();
 
             Assert.True(context.ReplyMessageReceived);
-            Assert.AreEqual(1, _numberOfPollyRetries);
+            Assert.AreEqual(0, _numberOfPollyRetries);
+            Assert.AreEqual(1, _numberOfOverriddenPollyRetries);
         }
 
         class Context : ScenarioContext
@@ -77,7 +79,7 @@ namespace NServiceBus.Extensions.DispatchRetries.AcceptanceTests
                         });
 
                     var dispatchRetriesOptions = config.DispatchRetries();
-                    dispatchRetriesOptions.DefaultImmediateDispatchRetriesPolicy(policy);
+                    dispatchRetriesOptions.DefaultBatchDispatchRetriesPolicy(policy);
                 });
             }
 
@@ -85,10 +87,16 @@ namespace NServiceBus.Extensions.DispatchRetries.AcceptanceTests
             {
                 public Task Handle(Message message, IMessageHandlerContext context)
                 {
-                    var options = new ReplyOptions();
-                    options.RequireImmediateDispatch();
+                    var policy = Policy
+                        .Handle<Exception>(ex=>true)
+                        .RetryAsync(1, (exception, retryAttempt, context) =>
+                        {
+                            _numberOfOverriddenPollyRetries++;
+                        });
 
-                    return context.Reply(new ReplyMessage(), options);
+                    context.OverrideBatchDispatchRetryPolicy(policy);
+
+                    return context.Reply(new ReplyMessage());
                 }
             }
         }

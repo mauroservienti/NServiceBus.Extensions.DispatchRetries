@@ -13,7 +13,8 @@ namespace NServiceBus
                 throw new ArgumentNullException(nameof(immediateDispatchRetryPolicy));
             }
 
-            context.Extensions.Set(Constants.ImmediateDispatchRetryPolicy, immediateDispatchRetryPolicy);
+            var overrides = context.Extensions.Get<DispatchRetriesOverrides>(Constants.Overrides);
+            overrides.ImmediateDispatchPolicyOverride = immediateDispatchRetryPolicy;
         }
 
         public static void OverrideBatchDispatchRetryPolicy(this IMessageHandlerContext context, AsyncPolicy batchDispatchRetryPolicy)
@@ -23,7 +24,8 @@ namespace NServiceBus
                 throw new ArgumentNullException(nameof(batchDispatchRetryPolicy));
             }
 
-            context.Extensions.Set(Constants.BatchDispatchRetryPolicy, batchDispatchRetryPolicy);
+            var overrides = context.Extensions.Get<DispatchRetriesOverrides>(Constants.Overrides);
+            overrides.BatchDispatchPolicyOverride = batchDispatchRetryPolicy;
         }
     }
 }
