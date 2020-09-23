@@ -3,12 +3,14 @@ namespace NServiceBus
 {
     public class DispatchRetriesConfiguration
     {
+        public DispatchRetriesConfiguration(NServiceBus.EndpointConfiguration configuration, Polly.AsyncPolicy defaultBatchAndImmediateDispatchRetriesPolicy) { }
         public void DefaultBatchDispatchRetriesPolicy(Polly.AsyncPolicy batchDispatchRetryPolicy) { }
         public void DefaultImmediateDispatchRetriesPolicy(Polly.AsyncPolicy immediateDispatchRetryPolicy) { }
     }
     public static class DispatchRetriesEndpointConfigurationExtensions
     {
         public static NServiceBus.DispatchRetriesConfiguration DispatchRetries(this NServiceBus.EndpointConfiguration configuration) { }
+        public static NServiceBus.DispatchRetriesConfiguration DispatchRetries(this NServiceBus.EndpointConfiguration configuration, Polly.AsyncPolicy defaultBatchAndImmediateDispatchRetriesPolicy) { }
     }
     public static class MessageHandlerContextExtensions
     {

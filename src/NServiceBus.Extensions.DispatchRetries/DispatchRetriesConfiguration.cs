@@ -17,6 +17,13 @@ namespace NServiceBus
             configuration.EnableFeature<DispatchRetriesFeature>();
         }
 
+        public DispatchRetriesConfiguration(EndpointConfiguration configuration, AsyncPolicy defaultBatchAndImmediateDispatchRetriesPolicy)
+        : this(configuration)
+        {
+            DefaultBatchDispatchRetriesPolicy(defaultBatchAndImmediateDispatchRetriesPolicy);
+            DefaultImmediateDispatchRetriesPolicy(defaultBatchAndImmediateDispatchRetriesPolicy);
+        }
+
         public void DefaultImmediateDispatchRetriesPolicy(AsyncPolicy immediateDispatchRetryPolicy)
         {
             if (immediateDispatchRetryPolicy == null)
