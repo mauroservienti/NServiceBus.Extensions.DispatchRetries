@@ -33,12 +33,12 @@ In unreliable environments, if the above send operation fails, an exception will
 NServiceBus.Extensions.DispatchRetries can be configured to introduce a Polly async policy into the NServiceBus outgoing pipeline to atomatically retry dispatch operations:
 
 ```csharp
-var endpointConfiguration = new EndpointConfigiration("myEndpointName");
+var endpointConfiguration = new EndpointConfiguration("myEndpointName");
 
 //define a Polly policy
 var retryPolicy = Policy.Handle<Exception>().RetryAsync(3);
 //enable DispatchRetries Feature
-var dispatchRetriesConfig = endpointConfiguration.DispatchRetries(retryPolicy);
+endpointConfiguration.DispatchRetries(retryPolicy);
 ```
 
 With the above configuration in place, all _immediate_ and _batch_ dispatch operations will be retried 3 times in case of dispatch failures.
@@ -104,12 +104,12 @@ In this last case, both `AMessage` and `AnotherMessage` are always dispatched im
 Basic configuration:
 
 ```csharp
-var endpointConfiguration = new EndpointConfigiration("myEndpointName");
+var endpointConfiguration = new EndpointConfiguration("myEndpointName");
 
 //define a Polly policy
 var retryPolicy = Policy.Handle<Exception>().RetryAsync(3);
 //enable DispatchRetries Feature
-var dispatchRetriesConfig = endpointConfiguration.DispatchRetries(retryPolicy);
+endpointConfiguration.DispatchRetries(retryPolicy);
 ```
 
 With the above configuration in place, all dispatch operations that fail will be retried 3 times before failing.
@@ -117,7 +117,7 @@ With the above configuration in place, all dispatch operations that fail will be
 It's possible to configure different policies for immediate or batch operations using the following code:
 
 ```csharp
-var endpointConfiguration = new EndpointConfigiration("myEndpointName");
+var endpointConfiguration = new EndpointConfiguration("myEndpointName");
 
 //enable DispatchRetries Feature
 var dispatchRetriesConfig = endpointConfiguration.DispatchRetries();
