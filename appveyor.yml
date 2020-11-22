@@ -46,3 +46,6 @@ for:
 
   build_script:
   - cmd: .\build.cmd
+
+  before_build:
+  - cmd: docker-switch-linux
