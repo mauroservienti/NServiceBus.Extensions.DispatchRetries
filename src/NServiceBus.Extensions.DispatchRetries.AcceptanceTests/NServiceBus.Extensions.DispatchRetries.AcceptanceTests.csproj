@@ -11,7 +11,7 @@
     <PackageReference Include="Npgsql" Version="5.0.4" />
     <PackageReference Include="NServiceBus.AcceptanceTesting" Version="7.4.6" />
     <PackageReference Include="NServiceBus.Persistence.Sql" Version="6.2.0" />
-    <PackageReference Include="NUnit" Version="3.13.1" />
+    <PackageReference Include="NUnit" Version="3.13.2" />
     <PackageReference Include="NUnit3TestAdapter" Version="3.17.0" />
     <PackageReference Include="SimpleExec" Version="7.0.0" />
   </ItemGroup>
