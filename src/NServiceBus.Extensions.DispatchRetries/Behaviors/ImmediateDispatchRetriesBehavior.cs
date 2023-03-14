@@ -13,7 +13,7 @@ namespace NServiceBus.Extensions.DispatchRetries.Behaviors
         private readonly AsyncPolicy _defaultImmediateRetryPolicy;
         private readonly AsyncPolicy _defaultBatchRetryPolicy;
 
-        public ImmediateDispatchRetriesBehavior(ReadOnlySettings readOnlySettings)
+        public ImmediateDispatchRetriesBehavior(IReadOnlySettings readOnlySettings)
         {
             readOnlySettings.TryGet(Constants.DefaultImmediateDispatchRetryPolicy, out _defaultImmediateRetryPolicy);
             readOnlySettings.TryGet(Constants.DefaultBatchDispatchRetryPolicy, out _defaultBatchRetryPolicy);

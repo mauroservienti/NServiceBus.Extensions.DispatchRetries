@@ -1,38 +1,105 @@
-﻿using NServiceBus.Extensions.DispatchRetries.AcceptanceTests.Transport.Helpers;
-
-namespace NServiceBus
+﻿namespace NServiceBus
 {
-    using Settings;
+    using System;
+    using System.Collections.Generic;
+    using System.IO;
+    using System.Threading;
+    using System.Threading.Tasks;
+    using AcceptanceTesting;
+    using Routing;
     using Transport;
 
-    /// <summary>
-    /// A transport optimized for development and learning use. DO NOT use in production.
-    /// </summary>
-    public class AcceptanceTestTransport : TransportDefinition
+    public class AcceptanceTestTransport : TransportDefinition, IMessageDrivenSubscriptionTransport
     {
-        /// <summary>
-        /// Used by implementations to control if a connection string is necessary.
-        /// </summary>
-        public override bool RequiresConnectionString => false;
-
-        /// <summary>
-        /// Gets an example connection string to use when reporting the lack of a configured connection string to the user.
-        /// </summary>
-        public override string ExampleConnectionStringForErrorMessage { get; } = "";
-
-        /// <summary>
-        /// Initializes all the factories and supported features for the transport. This method is called right before all features
-        /// are activated and the settings will be locked down. This means you can use the SettingsHolder both for providing
-        /// default capabilities as well as for initializing the transport's configuration based on those settings (the user cannot
-        /// provide information anymore at this stage).
-        /// </summary>
-        /// <param name="settings">An instance of the current settings.</param>
-        /// <param name="connectionString">The connection string.</param>
-        /// <returns>The supported factories.</returns>
-        public override TransportInfrastructure Initialize(SettingsHolder settings, string connectionString)
+        public AcceptanceTestTransport(bool enableNativeDelayedDelivery = true, bool enableNativePublishSubscribe = true)
+            : base(TransportTransactionMode.SendsAtomicWithReceive, enableNativeDelayedDelivery, enableNativePublishSubscribe, true)
         {
-            Guard.AgainstNull(nameof(settings), settings);
-            return new AcceptanceTestTransportInfrastructure(settings);
+        }
+
+        public override async Task<TransportInfrastructure> Initialize(HostSettings hostSettings, ReceiveSettings[] receivers, string[] sendingAddresses, CancellationToken cancellationToken = default)
+        {
+            if (hostSettings == null)
+            {
+                throw new ArgumentNullException(nameof(hostSettings));
+            }
+            var infrastructure = new AcceptanceTestTransportInfrastructure(hostSettings, this, receivers, FailToDispatchOnce);
+            infrastructure.ConfigureDispatcher();
+            await infrastructure.ConfigureReceivers().ConfigureAwait(false);
+
+            return infrastructure;
+        }
+
+        [Obsolete("Obsolete marker to make the code compile", false)]
+#pragma warning disable CS0809 // Obsolete member overrides non-obsolete member
+        public override string ToTransportAddress(QueueAddress address)
+#pragma warning restore CS0809 // Obsolete member overrides non-obsolete member
+        {
+            var baseAddress = address.BaseAddress;
+            ThrowForBadPath(baseAddress, "endpoint name");
+
+            var discriminator = address.Discriminator;
+
+            if (!string.IsNullOrEmpty(discriminator))
+            {
+                ThrowForBadPath(discriminator, "endpoint discriminator");
+
+                baseAddress += "-" + discriminator;
+            }
+
+            var qualifier = address.Qualifier;
+
+            if (!string.IsNullOrEmpty(qualifier))
+            {
+                ThrowForBadPath(qualifier, "address qualifier");
+
+                baseAddress += "-" + qualifier;
+            }
+
+            return baseAddress;
+        }
+
+        public override IReadOnlyCollection<TransportTransactionMode> GetSupportedTransactionModes()
+        {
+            return new[]
+            {
+                TransportTransactionMode.None,
+                TransportTransactionMode.ReceiveOnly,
+                TransportTransactionMode.SendsAtomicWithReceive
+            };
+        }
+
+        public bool FailToDispatchOnce { get; set; }
+
+        string storageLocation;
+        public string StorageLocation
+        {
+            get => storageLocation;
+            set
+            {
+                if (value == null)
+                {
+                    throw new ArgumentNullException(nameof(StorageLocation));
+                }
+                PathChecker.ThrowForBadPath(value, nameof(StorageLocation));
+                storageLocation = value;
+            }
+        }
+
+        static void ThrowForBadPath(string value, string valueName)
+        {
+            var invalidPathChars = Path.GetInvalidPathChars();
+
+            if (string.IsNullOrEmpty(value))
+            {
+                return;
+            }
+
+            if (value.IndexOfAny(invalidPathChars) < 0)
+            {
+                return;
+            }
+
+            throw new Exception($"The value for '{valueName}' has illegal path characters. Provided value: {value}. Must not contain any of {string.Join(", ", invalidPathChars)}.");
         }
     }
 }

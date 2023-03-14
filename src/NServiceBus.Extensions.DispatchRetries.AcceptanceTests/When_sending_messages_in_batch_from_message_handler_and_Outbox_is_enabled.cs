@@ -3,6 +3,7 @@ using System.Threading.Tasks;
 using Npgsql;
 using NpgsqlTypes;
 using NServiceBus.AcceptanceTesting;
+using NServiceBus.AcceptanceTests;
 using NServiceBus.AttributeRouting.AcceptanceTests;
 using NUnit.Framework;
 using Polly;
@@ -136,6 +137,7 @@ namespace NServiceBus.Extensions.DispatchRetries.AcceptanceTests
                     });
                     persistence.ConnectionBuilder(() => new NpgsqlConnection(postgres_connection));
 
+                    config.SetReceiveOnlyTransactionMode();
                     config.EnableOutbox();
                 });
             }

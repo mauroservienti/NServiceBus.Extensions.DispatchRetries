@@ -3,6 +3,7 @@ namespace NServiceBus
     using System;
     using System.Collections.Concurrent;
     using System.IO;
+    using System.Threading;
     using System.Threading.Tasks;
     using Logging;
 
@@ -18,17 +19,17 @@ namespace NServiceBus
 
         public string FileToProcess { get; private set; }
 
-        public Task<bool> BeginTransaction(string incomingFilePath)
+        public Task<bool> BeginTransaction(string incomingFilePath, CancellationToken cancellationToken = default)
         {
             Directory.CreateDirectory(transactionDir);
             FileToProcess = Path.Combine(transactionDir, Path.GetFileName(incomingFilePath));
 
-            return AsyncFile.Move(incomingFilePath, FileToProcess);
+            return AsyncFile.Move(incomingFilePath, FileToProcess, cancellationToken);
         }
 
-        public async Task Commit()
+        public async Task Commit(CancellationToken cancellationToken = default)
         {
-            await AsyncDirectory.Move(transactionDir, commitDir).ConfigureAwait(false);
+            await AsyncDirectory.Move(transactionDir, commitDir, cancellationToken).ConfigureAwait(false);
             committed = true;
         }
 
@@ -41,10 +42,11 @@ namespace NServiceBus
 
         public void ClearPendingOutgoingOperations()
         {
-            while (outgoingFiles.TryDequeue(out _)) { }
+            while (outgoingFiles.TryDequeue(out _))
+            { }
         }
 
-        public Task Enlist(string messagePath, string messageContents)
+        public Task Enlist(string messagePath, string messageContents, CancellationToken cancellationToken = default)
         {
             var inProgressFileName = Path.GetFileNameWithoutExtension(messagePath) + ".out";
 
@@ -53,7 +55,7 @@ namespace NServiceBus
 
             outgoingFiles.Enqueue(new OutgoingFile(committedPath, messagePath));
 
-            return AsyncFile.WriteText(txPath, messageContents);
+            return AsyncFile.WriteText(txPath, messageContents, cancellationToken);
         }
 
         public bool Complete()
