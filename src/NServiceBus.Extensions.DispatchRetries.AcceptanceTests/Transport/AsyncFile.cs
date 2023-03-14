@@ -1,31 +1,30 @@
 namespace NServiceBus
 {
-    using System.Collections.Generic;
+    using System;
     using System.IO;
     using System.Text;
     using System.Threading;
     using System.Threading.Tasks;
+    using NServiceBus.Logging;
 
     static class AsyncFile
     {
-        public static async Task WriteBytes(string filePath, byte[] bytes)
-        {
-            using (var stream = CreateWriteStream(filePath, FileMode.Create))
-            {
-                await stream.WriteAsync(bytes, 0, bytes.Length).ConfigureAwait(false);
-            }
-        }
+        static readonly ILog log = LogManager.GetLogger(typeof(AsyncFile));
 
-        public static async Task WriteLines(string filePath, IEnumerable<string> lines)
+        public static async Task WriteBytes(string filePath, ReadOnlyMemory<byte> bytes, CancellationToken cancellationToken = default)
         {
             using (var stream = CreateWriteStream(filePath, FileMode.Create))
             {
-                await WriteLines(stream, lines).ConfigureAwait(false);
+#if NET
+                await stream.WriteAsync(bytes, cancellationToken).ConfigureAwait(false);
+#else
+                await stream.WriteAsync(bytes.ToArray(), 0, bytes.Length, cancellationToken).ConfigureAwait(false);
+#endif
             }
         }
 
         //write to temp file first so we can do a atomic move
-        public static async Task WriteTextAtomic(string targetPath, string text)
+        public static async Task WriteTextAtomic(string targetPath, string text, CancellationToken cancellationToken = default)
         {
             var tempFile = Path.GetTempFileName();
             var bytes = Encoding.UTF8.GetBytes(text);
@@ -34,8 +33,25 @@ namespace NServiceBus
             {
                 using (var stream = CreateWriteStream(tempFile, FileMode.Open))
                 {
-                    await stream.WriteAsync(bytes, 0, bytes.Length).ConfigureAwait(false);
+                    await stream.WriteAsync(bytes, 0, bytes.Length, cancellationToken).ConfigureAwait(false);
                 }
+            }
+            catch (Exception ex) when (ex.IsCausedBy(cancellationToken))
+            {
+                // When we introduced cancellation, the general catch was already present.
+                // We didn't want to change the behavior there,
+                // but we did want to prevent deleting the file from throwing an exception
+                // which would mask the OperationCanceledException.
+                try
+                {
+                    File.Delete(tempFile);
+                }
+                catch (Exception deleteEx)
+                {
+                    log.Warn("Failed to delete file.", deleteEx);
+                }
+
+                throw;
             }
             catch
             {
@@ -46,46 +62,40 @@ namespace NServiceBus
             File.Move(tempFile, targetPath);
         }
 
-        static async Task WriteLines(FileStream stream, IEnumerable<string> lines)
-        {
-            using (var writer = new StreamWriter(stream))
-            {
-                foreach (var line in lines)
-                {
-                    await writer.WriteLineAsync(line).ConfigureAwait(false);
-                }
-            }
-        }
-
         static FileStream CreateWriteStream(string filePath, FileMode fileMode)
         {
             return new FileStream(filePath, fileMode, FileAccess.Write, FileShare.None, bufferSize: 4096, useAsync: true);
         }
 
-        public static Task WriteText(string filePath, string text)
+        public static Task WriteText(string filePath, string text, CancellationToken cancellationToken = default)
         {
             var bytes = Encoding.UTF8.GetBytes(text);
 
-            return WriteBytes(filePath, bytes);
+            return WriteBytes(filePath, bytes, cancellationToken);
         }
 
-        public static async Task<string> ReadText(string filePath)
+        public static async Task<string> ReadText(string filePath, CancellationToken cancellationToken = default)
         {
             using (var stream = new StreamReader(CreateReadStream(filePath), Encoding.UTF8))
             {
+                // The token isn't currently required but later, a method in a descendant call stack may get a token overload.
+                // When that happens, we want CA2016 to tell us to forward the token, so we want to keep the parameter.
+                // This line makes the parameter "required".
+                cancellationToken.ThrowIfCancellationRequested();
+
                 var result = await stream.ReadToEndAsync().ConfigureAwait(false);
 
                 return result;
             }
         }
 
-        public static async Task<byte[]> ReadBytes(string filePath, CancellationToken token = default)
+        public static async Task<byte[]> ReadBytes(string filePath, CancellationToken cancellationToken = default)
         {
             using (var stream = CreateReadStream(filePath))
             {
                 var length = (int)stream.Length;
                 var body = new byte[length];
-                await stream.ReadAsync(body, 0, length, token).ConfigureAwait(false);
+                await stream.ReadAsync(body, 0, length, cancellationToken).ConfigureAwait(false);
 
                 return body;
             }
@@ -96,7 +106,7 @@ namespace NServiceBus
             return new FileStream(filePath, FileMode.Open, FileAccess.Read, FileShare.Read, bufferSize: 4096, useAsync: true);
         }
 
-        public static async Task<bool> Move(string sourcePath, string targetPath)
+        public static async Task<bool> Move(string sourcePath, string targetPath, CancellationToken cancellationToken = default)
         {
             try
             {
@@ -109,16 +119,18 @@ namespace NServiceBus
 
             var count = 0;
 
-            while (IsFileLocked(targetPath))
+            while (count <= 10)
             {
-                await Task.Delay(100).ConfigureAwait(false);
+                cancellationToken.ThrowIfCancellationRequested();
 
-                count++;
-
-                if (count > 10)
+                if (!IsFileLocked(targetPath))
                 {
                     break;
                 }
+
+                await Task.Delay(100, cancellationToken).ConfigureAwait(false);
+
+                count++;
             }
 
             return true;

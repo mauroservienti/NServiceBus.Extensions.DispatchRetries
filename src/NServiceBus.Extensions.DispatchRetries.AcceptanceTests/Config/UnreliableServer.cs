@@ -1,6 +1,5 @@
 ﻿using NServiceBus.AcceptanceTesting.Customization;
 using NServiceBus.AcceptanceTesting.Support;
-using NServiceBus.Features;
 using System;
 using System.Collections.Generic;
 using System.IO;
@@ -10,7 +9,7 @@ namespace NServiceBus.AttributeRouting.AcceptanceTests
 {
     public class UnreliableServer : IEndpointSetupTemplate
     {
-        public Task<EndpointConfiguration> GetConfiguration(RunDescriptor runDescriptor, EndpointCustomizationConfiguration endpointConfiguration, Action<EndpointConfiguration> configurationBuilderCustomization)
+        public Task<EndpointConfiguration> GetConfiguration(RunDescriptor runDescriptor, EndpointCustomizationConfiguration endpointConfiguration, Func<EndpointConfiguration, Task> configurationBuilderCustomization)
         {
             var types = endpointConfiguration.GetTypesScopedByTestClass();
             var typesToInclude= new List<Type>(types);
@@ -21,9 +20,6 @@ namespace NServiceBus.AttributeRouting.AcceptanceTests
             configuration.TypesToIncludeInScan(typesToInclude);
             configuration.EnableInstallers();
 
-            configuration.UseContainer(new AcceptanceTestingContainer());
-            configuration.DisableFeature<TimeoutManager>();
-
             var recoverability = configuration.Recoverability();
             recoverability.Delayed(delayed => delayed.NumberOfRetries(0));
             recoverability.Immediate(immediate => immediate.NumberOfRetries(0));
@@ -31,10 +27,12 @@ namespace NServiceBus.AttributeRouting.AcceptanceTests
 
             var storageDir = StorageUtils.GetAcceptanceTestingTransportStorageDirectory();
 
-            var transportConfig = configuration.UseTransport<AcceptanceTestTransport>();
-            transportConfig.FailDispatchOnce();
-            transportConfig.StorageDirectory(storageDir);
-
+            configuration.UseTransport(new AcceptanceTestTransport()
+            {
+                StorageLocation = storageDir,
+                FailToDispatchOnce = true
+            });
+            
             configuration.RegisterComponentsAndInheritanceHierarchy(runDescriptor);
 
             configurationBuilderCustomization(configuration);

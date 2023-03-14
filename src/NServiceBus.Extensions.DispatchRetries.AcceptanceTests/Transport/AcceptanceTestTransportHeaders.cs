@@ -2,6 +2,6 @@
 {
     static class AcceptanceTestTransportHeaders
     {
-        public const string TimeToBeReceived = "NServiceBus.Transport.AcceptanceTest.TimeToBeReceived";
+        public const string TimeToBeReceived = "NServiceBus.Transport.Learning.TimeToBeReceived";
     }
 }

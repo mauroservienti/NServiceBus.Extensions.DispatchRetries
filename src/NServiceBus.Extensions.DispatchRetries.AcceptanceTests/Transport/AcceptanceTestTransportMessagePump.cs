@@ -10,31 +10,37 @@
     using Logging;
     using Transport;
 
-    class AcceptanceTestTransportMessagePump : IPushMessages
+    class AcceptanceTestTransportMessagePump : IMessageReceiver
     {
-        public AcceptanceTestTransportMessagePump(string basePath)
+        public AcceptanceTestTransportMessagePump(string id,
+            string receiveAddress,
+            string basePath,
+            Action<string, Exception, CancellationToken> criticalErrorAction,
+            ISubscriptionManager subscriptionManager,
+            ReceiveSettings receiveSettings,
+            TransportTransactionMode transactionMode)
         {
+            Id = id;
+            ReceiveAddress = receiveAddress;
             this.basePath = basePath;
+            this.criticalErrorAction = criticalErrorAction;
+            Subscriptions = subscriptionManager;
+            this.receiveSettings = receiveSettings;
+            this.transactionMode = transactionMode;
         }
 
-        public Task Init(Func<MessageContext, Task> onMessage, Func<ErrorContext, Task<ErrorHandleResult>> onError, CriticalError criticalError, PushSettings settings)
+        public void Init()
         {
-            this.onMessage = onMessage;
-            this.onError = onError;
-            this.criticalError = criticalError;
+            PathChecker.ThrowForBadPath(ReceiveAddress, "InputQueue");
 
-            transactionMode = settings.RequiredTransactionMode;
-
-            PathChecker.ThrowForBadPath(settings.InputQueue, "InputQueue");
-
-            messagePumpBasePath = Path.Combine(basePath, settings.InputQueue);
+            messagePumpBasePath = Path.Combine(basePath, ReceiveAddress);
             bodyDir = Path.Combine(messagePumpBasePath, BodyDirName);
             delayedDir = Path.Combine(messagePumpBasePath, DelayedDirName);
 
             pendingTransactionDir = Path.Combine(messagePumpBasePath, PendingDirName);
             committedTransactionDir = Path.Combine(messagePumpBasePath, CommittedDirName);
 
-            if (settings.PurgeOnStartup)
+            if (receiveSettings.PurgeOnStartup)
             {
                 if (Directory.Exists(messagePumpBasePath))
                 {
@@ -43,45 +49,85 @@
             }
 
             delayedMessagePoller = new DelayedMessagePoller(messagePumpBasePath, delayedDir);
-
-            return Task.CompletedTask;
         }
 
-        public void Start(PushRuntimeSettings limitations)
+        public Task Initialize(PushRuntimeSettings limitations, OnMessage onMessage, OnError onError, CancellationToken cancellationToken = default)
         {
-            maxConcurrency = limitations.MaxConcurrency;
-            concurrencyLimiter = new SemaphoreSlim(maxConcurrency);
-            cancellationTokenSource = new CancellationTokenSource();
+            this.onMessage = onMessage;
+            this.onError = onError;
 
-            cancellationToken = cancellationTokenSource.Token;
+            Init();
+
+            // use concurrency 1 if the user hasn't explicitly configured a concurrency value
+            maxConcurrency = limitations == PushRuntimeSettings.Default ? 1 : limitations.MaxConcurrency;
+            concurrencyLimiter = new SemaphoreSlim(maxConcurrency);
 
             RecoverPendingTransactions();
 
             EnsureDirectoriesExists();
 
-            messagePumpTask = Task.Run(ProcessMessages, cancellationToken);
-
-            delayedMessagePoller.Start();
+            return Task.CompletedTask;
         }
 
-        public async Task Stop()
+        public Task StartReceive(CancellationToken cancellationToken = default)
         {
-            cancellationTokenSource.Cancel();
+            messagePumpCancellationTokenSource = new CancellationTokenSource();
+            messageProcessingCancellationTokenSource = new CancellationTokenSource();
 
-            await delayedMessagePoller.Stop()
-                .ConfigureAwait(false);
+            // Task.Run() so the call returns immediately instead of waiting for the first await or return down the call stack
+            messagePumpTask = Task.Run(() => PumpMessagesAndSwallowExceptions(messagePumpCancellationTokenSource.Token), CancellationToken.None);
 
-            await messagePumpTask
-                .ConfigureAwait(false);
+            delayedMessagePoller.Start();
 
-            while (concurrencyLimiter.CurrentCount != maxConcurrency)
+            return Task.CompletedTask;
+        }
+
+        public async Task StopReceive(CancellationToken cancellationToken = default)
+        {
+            messagePumpCancellationTokenSource?.Cancel();
+
+            delayedMessagePoller.Stop();
+
+            using (cancellationToken.Register(state => (state as CancellationTokenSource)?.Cancel(), messageProcessingCancellationTokenSource))
             {
-                await Task.Delay(50, CancellationToken.None)
-                    .ConfigureAwait(false);
+                await messagePumpTask.ConfigureAwait(false);
+
+                while (concurrencyLimiter.CurrentCount != maxConcurrency)
+                {
+                    // We are deliberately not forwarding the cancellation token here because
+                    // this loop is our way of waiting for all pending messaging operations
+                    // to participate in cooperative cancellation or not.
+                    // We do not want to rudely abort them because the cancellation token has been canceled.
+                    // This allows us to preserve the same behaviour in v8 as in v7 in that,
+                    // if CancellationToken.None is passed to this method,
+                    // the method will only return when all in flight messages have been processed.
+                    // If, on the other hand, a non-default CancellationToken is passed,
+                    // all message processing operations have the opportunity to
+                    // participate in cooperative cancellation.
+                    // If we ever require a method of stopping the endpoint such that
+                    // all message processing is canceled immediately,
+                    // we can provide that as a separate feature.
+                    await Task.Delay(50, CancellationToken.None).ConfigureAwait(false);
+                }
             }
 
             concurrencyLimiter.Dispose();
+            messagePumpCancellationTokenSource?.Dispose();
+            messageProcessingCancellationTokenSource.Dispose();
         }
+
+        public async Task ChangeConcurrency(PushRuntimeSettings limitations, CancellationToken cancellationToken = default)
+        {
+            await StopReceive(cancellationToken).ConfigureAwait(false);
+            await Initialize(limitations, onMessage, onError, cancellationToken).ConfigureAwait(false);
+            await StartReceive(cancellationToken).ConfigureAwait(false);
+        }
+
+        public ISubscriptionManager Subscriptions { get; }
+
+        public string Id { get; }
+
+        public string ReceiveAddress { get; private set; }
 
         void RecoverPendingTransactions()
         {
@@ -121,73 +167,75 @@
         }
 
         [DebuggerNonUserCode]
-        async Task ProcessMessages()
+        async Task PumpMessagesAndSwallowExceptions(CancellationToken messagePumpCancellationToken)
         {
-            while (!cancellationToken.IsCancellationRequested)
+            log.Debug($"Started polling for new messages in {messagePumpBasePath}");
+
+            while (!messagePumpCancellationToken.IsCancellationRequested)
             {
                 try
                 {
-                    await InnerProcessMessages()
-                        .ConfigureAwait(false);
+                    await PumpMessages(messagePumpCancellationToken).ConfigureAwait(false);
                 }
-                catch (OperationCanceledException)
+                catch (Exception ex) when (ex.IsCausedBy(messagePumpCancellationToken))
                 {
-                    // graceful shutdown
+                    // private token, pump is being stopped, log the exception in case the stack trace is ever needed for debugging
+                    log.Debug("Operation canceled while stopping message pump.", ex);
+                    break;
                 }
                 catch (Exception ex)
                 {
-                    criticalError.Raise("Failure to process messages", ex);
+                    // core guarantees this doesn't throw
+                    criticalErrorAction("Message receiving failed.", ex, messagePumpCancellationToken);
                 }
             }
         }
 
-        async Task InnerProcessMessages()
+        async Task PumpMessages(CancellationToken messagePumpCancellationToken)
         {
-            log.Debug($"Started polling for new messages in {messagePumpBasePath}");
+            var filesFound = false;
 
-            while (!cancellationToken.IsCancellationRequested)
+            foreach (var filePath in Directory.EnumerateFiles(messagePumpBasePath, "*.*"))
             {
-                var filesFound = false;
+                filesFound = true;
 
-                foreach (var filePath in Directory.EnumerateFiles(messagePumpBasePath, "*.*"))
+                var nativeMessageId = Path.GetFileNameWithoutExtension(filePath).Replace(".metadata", "");
+
+                await concurrencyLimiter.WaitAsync(messagePumpCancellationToken).ConfigureAwait(false);
+
+                IAcceptanceTestTransportTransaction transaction;
+
+                try
                 {
-                    filesFound = true;
+                    transaction = GetTransaction();
 
-                    var nativeMessageId = Path.GetFileNameWithoutExtension(filePath).Replace(".metadata", "");
+                    var ableToLockFile = await transaction.BeginTransaction(filePath, messagePumpCancellationToken).ConfigureAwait(false);
 
-                    await concurrencyLimiter.WaitAsync(cancellationToken)
-                        .ConfigureAwait(false);
-
-                    IAcceptanceTestTransportTransaction transaction;
-
-                    try
+                    if (!ableToLockFile)
                     {
-                        transaction = GetTransaction();
-
-                        var ableToLockFile = await transaction.BeginTransaction(filePath).ConfigureAwait(false);
-
-                        if (!ableToLockFile)
-                        {
-                            log.Debug($"Unable to lock file {filePath}({transaction.FileToProcess})");
-                            concurrencyLimiter.Release();
-                            continue;
-                        }
-                    }
-                    catch (Exception ex)
-                    {
-                        log.Debug($"Failed to begin transaction {filePath}", ex);
-
+                        log.Debug($"Unable to lock file {filePath}({transaction.FileToProcess})");
                         concurrencyLimiter.Release();
-                        throw;
+                        continue;
                     }
-
-                    var _ = ProcessFileAndComplete(transaction, filePath, nativeMessageId);
                 }
-
-                if (!filesFound)
+                catch (Exception ex) when (ex.IsCausedBy(messagePumpCancellationToken))
                 {
-                    await Task.Delay(10, cancellationToken).ConfigureAwait(false);
+                    concurrencyLimiter.Release();
+                    throw;
                 }
+                catch (Exception ex)
+                {
+                    concurrencyLimiter.Release();
+                    throw new Exception($"Failed to begin transaction {filePath}", ex);
+                }
+
+                // no Task.Run() here to avoid a closure
+                _ = ProcessMessageSwallowExceptionsAndReleaseConcurrencyLimiter(transaction, filePath, nativeMessageId, messageProcessingCancellationTokenSource.Token);
+            }
+
+            if (!filesFound)
+            {
+                await Task.Delay(10, messagePumpCancellationToken).ConfigureAwait(false);
             }
         }
 
@@ -201,12 +249,31 @@
             return new DirectoryBasedTransaction(messagePumpBasePath, PendingDirName, CommittedDirName, Guid.NewGuid().ToString());
         }
 
-        async Task ProcessFileAndComplete(IAcceptanceTestTransportTransaction transaction, string filePath, string messageId)
+        async Task ProcessMessageSwallowExceptionsAndReleaseConcurrencyLimiter(IAcceptanceTestTransportTransaction transaction, string filePath, string messageId, CancellationToken messageProcessingCancellationToken)
         {
             try
             {
-                await ProcessFile(transaction, messageId)
-                    .ConfigureAwait(false);
+                await ProcessFileAndComplete(transaction, filePath, messageId, messageProcessingCancellationToken).ConfigureAwait(false);
+            }
+            catch (Exception ex) when (ex.IsCausedBy(messageProcessingCancellationToken))
+            {
+                log.Debug("Message processing canceled.", ex);
+            }
+            catch (Exception ex)
+            {
+                log.Error("Message processing failed.", ex);
+            }
+            finally
+            {
+                concurrencyLimiter.Release();
+            }
+        }
+
+        async Task ProcessFileAndComplete(IAcceptanceTestTransportTransaction transaction, string filePath, string messageId, CancellationToken messageProcessingCancellationToken)
+        {
+            try
+            {
+                await ProcessFile(transaction, messageId, messageProcessingCancellationToken).ConfigureAwait(false);
             }
             finally
             {
@@ -217,26 +284,21 @@
 
                 try
                 {
-                    var wasCommitted = transaction.Complete();
-
-                    if (wasCommitted)
+                    if (transaction.Complete())
                     {
                         File.Delete(Path.Combine(bodyDir, messageId + BodyFileSuffix));
                     }
                 }
                 catch (Exception ex)
                 {
-                    log.Debug($"Failure while trying to complete receive transaction for  {filePath}({transaction.FileToProcess})" + filePath, ex);
+                    log.Debug($"Failure while trying to complete receive transaction for {filePath}({transaction.FileToProcess})", ex);
                 }
-
-                concurrencyLimiter.Release();
             }
         }
 
-        async Task ProcessFile(IAcceptanceTestTransportTransaction transaction, string messageId)
+        async Task ProcessFile(IAcceptanceTestTransportTransaction transaction, string messageId, CancellationToken messageProcessingCancellationToken)
         {
-            var message = await AsyncFile.ReadText(transaction.FileToProcess)
-                    .ConfigureAwait(false);
+            var message = await AsyncFile.ReadText(transaction.FileToProcess, messageProcessingCancellationToken).ConfigureAwait(false);
 
             var bodyPath = Path.Combine(bodyDir, $"{messageId}{BodyFileSuffix}");
             var headers = HeaderSerializer.Deserialize(message);
@@ -251,19 +313,16 @@
                 var sentTime = File.GetCreationTimeUtc(transaction.FileToProcess);
 
                 var utcNow = DateTime.UtcNow;
+
                 if (sentTime + ttbr < utcNow)
                 {
-                    await transaction.Commit()
-                        .ConfigureAwait(false);
+                    await transaction.Commit(messageProcessingCancellationToken).ConfigureAwait(false);
                     log.InfoFormat("Dropping message '{0}' as the specified TimeToBeReceived of '{1}' expired since sending the message at '{2:O}'. Current UTC time is '{3:O}'", messageId, ttbrString, sentTime, utcNow);
                     return;
                 }
             }
 
-            var tokenSource = new CancellationTokenSource();
-
-            var body = await AsyncFile.ReadBytes(bodyPath, cancellationToken)
-                .ConfigureAwait(false);
+            var body = await AsyncFile.ReadBytes(bodyPath, messageProcessingCancellationToken).ConfigureAwait(false);
 
             var transportTransaction = new TransportTransaction();
 
@@ -272,75 +331,80 @@
                 transportTransaction.Set(transaction);
             }
 
-            var messageContext = new MessageContext(messageId, headers, body, transportTransaction, tokenSource, new ContextBag());
+            var processingContext = new ContextBag();
+
+            var messageContext = new MessageContext(messageId, headers, body, transportTransaction, ReceiveAddress, processingContext);
 
             try
             {
-                await onMessage(messageContext)
-                    .ConfigureAwait(false);
+                await onMessage(messageContext, messageProcessingCancellationToken).ConfigureAwait(false);
+            }
+            catch (Exception ex) when (ex.IsCausedBy(messageProcessingCancellationToken))
+            {
+                log.Debug("Message processing canceled. Rolling back transaction.", ex);
+                transaction.Rollback();
+                throw;
             }
             catch (Exception exception)
             {
                 transaction.ClearPendingOutgoingOperations();
+
                 var processingFailures = retryCounts.AddOrUpdate(messageId, id => 1, (id, currentCount) => currentCount + 1);
 
                 headers = HeaderSerializer.Deserialize(message);
                 headers.Remove(AcceptanceTestTransportHeaders.TimeToBeReceived);
 
-                var errorContext = new ErrorContext(exception, headers, messageId, body, transportTransaction, processingFailures);
+                var errorContext = new ErrorContext(exception, headers, messageId, body, transportTransaction, processingFailures, ReceiveAddress, processingContext);
 
-                ErrorHandleResult actionToTake;
+                ErrorHandleResult result;
+
                 try
                 {
-                    actionToTake = await onError(errorContext)
-                        .ConfigureAwait(false);
+                    result = await onError(errorContext, messageProcessingCancellationToken).ConfigureAwait(false);
+                }
+                catch (Exception ex) when (ex.IsCausedBy(messageProcessingCancellationToken))
+                {
+                    log.Debug("Message processing canceled. Rolling back transaction.", ex);
+                    transaction.Rollback();
+                    throw;
                 }
                 catch (Exception ex)
                 {
-                    criticalError.Raise($"Failed to execute recoverability policy for message with native ID: `{messageContext.MessageId}`", ex);
-                    actionToTake = ErrorHandleResult.RetryRequired;
+                    criticalErrorAction($"Failed to execute recoverability policy for message with native ID: `{messageContext.NativeMessageId}`", ex, messageProcessingCancellationToken);
+                    result = ErrorHandleResult.RetryRequired;
                 }
 
-                if (actionToTake == ErrorHandleResult.RetryRequired)
+                if (result == ErrorHandleResult.RetryRequired)
                 {
                     transaction.Rollback();
-
                     return;
                 }
             }
 
-            if (tokenSource.IsCancellationRequested)
-            {
-                transaction.Rollback();
-
-                return;
-            }
-
-            await transaction.Commit()
-                .ConfigureAwait(false);
+            await transaction.Commit(messageProcessingCancellationToken).ConfigureAwait(false);
         }
 
-        CancellationToken cancellationToken;
-        CancellationTokenSource cancellationTokenSource;
+        CancellationTokenSource messagePumpCancellationTokenSource;
+        CancellationTokenSource messageProcessingCancellationTokenSource;
         SemaphoreSlim concurrencyLimiter;
         Task messagePumpTask;
-        Func<MessageContext, Task> onMessage;
-        Func<ErrorContext, Task<ErrorHandleResult>> onError;
-        ConcurrentDictionary<string, int> retryCounts = new ConcurrentDictionary<string, int>();
         string messagePumpBasePath;
-        string basePath;
         DelayedMessagePoller delayedMessagePoller;
-        TransportTransactionMode transactionMode;
         int maxConcurrency;
         string bodyDir;
         string pendingTransactionDir;
         string committedTransactionDir;
         string delayedDir;
+        OnMessage onMessage;
+        OnError onError;
 
-        CriticalError criticalError;
+        readonly ConcurrentDictionary<string, int> retryCounts = new ConcurrentDictionary<string, int>();
+        readonly string basePath;
+        readonly Action<string, Exception, CancellationToken> criticalErrorAction;
+        readonly ReceiveSettings receiveSettings;
+        readonly TransportTransactionMode transactionMode;
 
-
-        static ILog log = LogManager.GetLogger<AcceptanceTestTransportMessagePump>();
+        static readonly ILog log = LogManager.GetLogger<AcceptanceTestTransportMessagePump>();
 
         public const string BodyFileSuffix = ".body.txt";
         public const string BodyDirName = ".bodies";

@@ -2,6 +2,7 @@ namespace NServiceBus
 {
     using System;
     using System.IO;
+    using System.Threading;
     using System.Threading.Tasks;
 
     class NoTransaction : IAcceptanceTestTransportTransaction
@@ -13,17 +14,17 @@ namespace NServiceBus
 
         public string FileToProcess { get; private set; }
 
-        public Task<bool> BeginTransaction(string incomingFilePath)
+        public Task<bool> BeginTransaction(string incomingFilePath, CancellationToken cancellationToken = default)
         {
             Directory.CreateDirectory(processingDirectory);
             FileToProcess = Path.Combine(processingDirectory, Path.GetFileName(incomingFilePath));
 
-            return AsyncFile.Move(incomingFilePath, FileToProcess);
+            return AsyncFile.Move(incomingFilePath, FileToProcess, cancellationToken);
         }
 
-        public Task Enlist(string messagePath, string messageContents) => AsyncFile.WriteText(messagePath, messageContents);
+        public Task Enlist(string messagePath, string messageContents, CancellationToken cancellationToken = default) => AsyncFile.WriteText(messagePath, messageContents, cancellationToken);
 
-        public Task Commit() => Task.CompletedTask;
+        public Task Commit(CancellationToken cancellationToken = default) => Task.CompletedTask;
 
         public void Rollback() { }
 
@@ -33,6 +34,7 @@ namespace NServiceBus
         {
             Directory.Delete(processingDirectory, true);
 
+            // since there is no way to roll back this transaction mode back we always return true
             return true;
         }
 

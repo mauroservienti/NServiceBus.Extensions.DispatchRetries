@@ -10,7 +10,7 @@ namespace NServiceBus.Extensions.DispatchRetries.Behaviors
     {
         private readonly AsyncPolicy _defaultRetryPolicy;
 
-        public BatchDispatchRetriesBehavior(ReadOnlySettings readOnlySettings)
+        public BatchDispatchRetriesBehavior(IReadOnlySettings readOnlySettings)
         {
             readOnlySettings.TryGet(Constants.DefaultBatchDispatchRetryPolicy, out _defaultRetryPolicy);
         }
