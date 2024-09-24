@@ -13,7 +13,7 @@ namespace NServiceBus.Extensions.DispatchRetries.Tests.API
         [MethodImpl(MethodImplOptions.NoInlining)]
         public void Approve_API()
         {
-            var publicApi = ApiGenerator.GeneratePublicApi(typeof(DispatchRetriesEndpointConfigurationExtensions).Assembly, options:null);
+            var publicApi = typeof(DispatchRetriesEndpointConfigurationExtensions).Assembly.GeneratePublicApi(options:null);
 
             Approvals.Verify(publicApi);
         }
