@@ -26,8 +26,8 @@ namespace NServiceBus.Extensions.DispatchRetries.AcceptanceTests
                 .Done(c => c.ReplyMessageReceived)
                 .Run();
 
-            Assert.True(context.ReplyMessageReceived);
-            Assert.AreEqual(1, _numberOfPollyRetries);
+            Assert.That(context.ReplyMessageReceived, Is.True);
+            Assert.That(1, Is.EqualTo(_numberOfPollyRetries));
         }
 
         class Context : ScenarioContext
