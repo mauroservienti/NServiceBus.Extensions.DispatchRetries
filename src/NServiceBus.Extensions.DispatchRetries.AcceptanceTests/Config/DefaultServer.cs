@@ -15,6 +15,7 @@ namespace NServiceBus.AttributeRouting.AcceptanceTests
             var typesToInclude= new List<Type>(types);
 
             var configuration = new EndpointConfiguration(endpointConfiguration.EndpointName);
+            configuration.UseSerialization<SystemJsonSerializer>();
 
             configuration.LimitMessageProcessingConcurrencyTo(1);
             configuration.TypesToIncludeInScan(typesToInclude);
