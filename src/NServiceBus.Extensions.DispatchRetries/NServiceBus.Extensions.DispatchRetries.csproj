@@ -19,6 +19,11 @@
         <NoWarn>$(NoWarn);NU5105</NoWarn>
     </PropertyGroup>
 
+    <PropertyGroup>
+        <MinVerMinimumMajorMinor>3.0</MinVerMinimumMajorMinor>
+        <MinVerAutoIncrement>patch</MinVerAutoIncrement>
+    </PropertyGroup>
+
     <ItemGroup>
         <None Include="..\..\assets\icon.png" Pack="true" PackagePath="\" />
     </ItemGroup>
