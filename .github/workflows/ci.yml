@@ -44,7 +44,7 @@ jobs:
           path: nugets/
           retention-days: 2
       - name: Upload approval files
-        if: matrix.name == 'Linux'
+        if: failure() && matrix.name == 'Linux'
         uses: actions/upload-artifact@v4.4.0
         with:
           name: approval-files
