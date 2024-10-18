@@ -11,7 +11,7 @@ namespace NServiceBus.Extensions.DispatchRetries.AcceptanceTests
     public class When_sending_from_message_session
     {
         private static int _numberOfPollyRetriesWithPolicy = 0;
-        private static int _numberOfPollyRetriesWithResielnceStrategy = 0;
+        private static int _numberOfPollyRetriesWithResilienceStrategy = 0;
 
         [Test]
         public async Task should_be_retried_according_to_policy()
@@ -48,7 +48,7 @@ namespace NServiceBus.Extensions.DispatchRetries.AcceptanceTests
                 .Run();
 
             Assert.That(context.MessageReceived, Is.True);
-            Assert.That(1, Is.EqualTo(_numberOfPollyRetriesWithResielnceStrategy));
+            Assert.That(1, Is.EqualTo(_numberOfPollyRetriesWithResilienceStrategy));
         }
 
         class Context : ScenarioContext
@@ -85,7 +85,7 @@ namespace NServiceBus.Extensions.DispatchRetries.AcceptanceTests
                         MaxRetryAttempts = 1,
                         OnRetry = _ =>
                         {
-                            _numberOfPollyRetriesWithResielnceStrategy++;
+                            _numberOfPollyRetriesWithResilienceStrategy++;
                             return ValueTask.CompletedTask;
                         }
                     };
