@@ -4,18 +4,20 @@ using NServiceBus.AcceptanceTesting;
 using NServiceBus.AttributeRouting.AcceptanceTests;
 using NUnit.Framework;
 using Polly;
+using Polly.Retry;
 
 namespace NServiceBus.Extensions.DispatchRetries.AcceptanceTests
 {
     public class When_sending_from_message_session
     {
-        private static int _numberOfPollyRetries = 0;
+        private static int _numberOfPollyRetriesWithPolicy = 0;
+        private static int _numberOfPollyRetriesWithResielnceStrategy = 0;
 
         [Test]
         public async Task should_be_retried_according_to_policy()
         {
             var context = await Scenario.Define<Context>()
-                .WithEndpoint<SenderEndpoint>(g => g.When(b =>
+                .WithEndpoint<SenderEndpointWithPolicy>(g => g.When(b =>
                 {
                     var options = new SendOptions();
                     options.SetDestination("ReceiverEndpoint");
@@ -27,7 +29,26 @@ namespace NServiceBus.Extensions.DispatchRetries.AcceptanceTests
                 .Run();
 
             Assert.That(context.MessageReceived, Is.True);
-            Assert.That(1, Is.EqualTo(_numberOfPollyRetries));
+            Assert.That(1, Is.EqualTo(_numberOfPollyRetriesWithPolicy));
+        }
+        
+        [Test]
+        public async Task should_be_retried_according_to_resilience_pipeline()
+        {
+            var context = await Scenario.Define<Context>()
+                .WithEndpoint<SenderEndpointWithResiliencePipeline>(g => g.When(b =>
+                {
+                    var options = new SendOptions();
+                    options.SetDestination("ReceiverEndpoint");
+
+                    return b.Send(new Message(), options);
+                }))
+                .WithEndpoint<ReceiverEndpoint>()
+                .Done(c => c.MessageReceived)
+                .Run();
+
+            Assert.That(context.MessageReceived, Is.True);
+            Assert.That(1, Is.EqualTo(_numberOfPollyRetriesWithResielnceStrategy));
         }
 
         class Context : ScenarioContext
@@ -35,9 +56,9 @@ namespace NServiceBus.Extensions.DispatchRetries.AcceptanceTests
             public bool MessageReceived { get; set; }
         }
 
-        class SenderEndpoint : EndpointConfigurationBuilder
+        class SenderEndpointWithPolicy : EndpointConfigurationBuilder
         {
-            public SenderEndpoint()
+            public SenderEndpointWithPolicy()
             {
                 EndpointSetup<UnreliableServer>(config =>
                 {
@@ -45,10 +66,34 @@ namespace NServiceBus.Extensions.DispatchRetries.AcceptanceTests
                         .Handle<Exception>(ex=>true)
                         .RetryAsync(1, (exception, retryAttempt, context) =>
                         {
-                            _numberOfPollyRetries++;
+                            _numberOfPollyRetriesWithPolicy++;
                         });
 
-                    var dispatchRetriesOptions= config.DispatchRetries(policy);
+                    _ = config.DispatchRetries(policy);
+                });
+            }
+        }
+        
+        class SenderEndpointWithResiliencePipeline : EndpointConfigurationBuilder
+        {
+            public SenderEndpointWithResiliencePipeline()
+            {
+                EndpointSetup<UnreliableServer>(config =>
+                {
+                    var o = new RetryStrategyOptions 
+                    {
+                        MaxRetryAttempts = 1,
+                        OnRetry = _ =>
+                        {
+                            _numberOfPollyRetriesWithResielnceStrategy++;
+                            return ValueTask.CompletedTask;
+                        }
+                    };
+
+                    var pipeline = new ResiliencePipelineBuilder()
+                        .AddRetry(o)
+                        .Build();
+                    _ = config.DispatchRetries(pipeline);
                 });
             }
         }

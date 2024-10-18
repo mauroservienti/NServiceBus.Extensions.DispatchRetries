@@ -12,11 +12,18 @@ namespace NServiceBus.Extensions.DispatchRetries.Behaviors
     {
         private readonly AsyncPolicy _defaultImmediateRetryPolicy;
         private readonly AsyncPolicy _defaultBatchRetryPolicy;
+        private readonly ResiliencePipeline _defaultBatchRetryResiliencePipeline;
+        private readonly ResiliencePipeline _defaultImmediateRetryResiliencePipeline;
 
         public ImmediateDispatchRetriesBehavior(IReadOnlySettings readOnlySettings)
         {
             readOnlySettings.TryGet(Constants.DefaultImmediateDispatchRetryPolicy, out _defaultImmediateRetryPolicy);
             readOnlySettings.TryGet(Constants.DefaultBatchDispatchRetryPolicy, out _defaultBatchRetryPolicy);
+            
+            readOnlySettings.TryGet(Constants.DefaultBatchDispatchRetryResiliencePipeline, out _defaultBatchRetryResiliencePipeline);
+            readOnlySettings.TryGet(Constants.DefaultImmediateDispatchRetryResiliencePipeline, out _defaultImmediateRetryResiliencePipeline);
+            
+            //TODO warn if both a Policy and a ResiliencePipeline are set for the same dispatch mode and inform that only the ResiliencePipeline will be used
         }
 
         public override Task Invoke(IDispatchContext context, Func<Task> next)
@@ -31,6 +38,11 @@ namespace NServiceBus.Extensions.DispatchRetries.Behaviors
             if (overrides.ImmediateDispatchPolicyOverride != null)
             {
                 return overrides.ImmediateDispatchPolicyOverride.ExecuteAsync(next);
+            }
+            
+            if (_defaultImmediateRetryResiliencePipeline != null)
+            {
+                return _defaultImmediateRetryResiliencePipeline.ExecuteAsync(_=>new ValueTask(next()), context.CancellationToken).AsTask();
             }
 
             if (_defaultImmediateRetryPolicy != null)
@@ -47,6 +59,11 @@ namespace NServiceBus.Extensions.DispatchRetries.Behaviors
             if (overrides.BatchDispatchPolicyOverride != null)
             {
                 return overrides.BatchDispatchPolicyOverride.ExecuteAsync(next);
+            }
+
+            if (_defaultBatchRetryResiliencePipeline != null)
+            {
+                return _defaultBatchRetryResiliencePipeline.ExecuteAsync(_=>new ValueTask(next()), context.CancellationToken).AsTask();
             }
 
             if (_defaultBatchRetryPolicy != null)
