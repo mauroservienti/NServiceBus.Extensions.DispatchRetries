@@ -48,7 +48,7 @@ namespace NServiceBus.Extensions.DispatchRetries.AcceptanceTests
                 .Run();
 
             Assert.That(context.ReplyMessageReceived, Is.True);
-            Assert.That(_numberOfPollyPolicyRetries, Is.EqualTo(1));
+            Assert.That(_numberOfPollyResiliencePipelineRetries, Is.EqualTo(1));
         }
 
         class Context : ScenarioContext
