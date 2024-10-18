@@ -19,7 +19,7 @@ namespace NServiceBus.Extensions.DispatchRetries.AcceptanceTests
                 .WithEndpoint<SenderEndpoint>(g => g.When(b =>
                 {
                     var options = new SendOptions();
-                    options.SetDestination("ReceiverEndpoint");
+                    options.SetDestination(nameof(ReceiverEndpoint));
 
                     return b.Send(new Message(), options);
                 }))

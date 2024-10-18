@@ -20,7 +20,7 @@ namespace NServiceBus.Extensions.DispatchRetries.AcceptanceTests
                 .WithEndpoint<SenderEndpointWithPolicy>(g => g.When(b =>
                 {
                     var options = new SendOptions();
-                    options.SetDestination("ReceiverEndpoint");
+                    options.SetDestination(nameof(ReceiverEndpoint));
 
                     return b.Send(new Message(), options);
                 }))
@@ -39,7 +39,7 @@ namespace NServiceBus.Extensions.DispatchRetries.AcceptanceTests
                 .WithEndpoint<SenderEndpointWithResiliencePipeline>(g => g.When(b =>
                 {
                     var options = new SendOptions();
-                    options.SetDestination("ReceiverEndpoint");
+                    options.SetDestination(nameof(ReceiverEndpoint));
 
                     return b.Send(new Message(), options);
                 }))
