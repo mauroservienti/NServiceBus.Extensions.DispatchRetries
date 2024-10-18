@@ -48,8 +48,6 @@ namespace NServiceBus.Extensions.DispatchRetries.AcceptanceTests
                 return Task.FromResult(false);
             }
 
-            ;
-
             await DockerCompose.Up(checker);
         }
 
