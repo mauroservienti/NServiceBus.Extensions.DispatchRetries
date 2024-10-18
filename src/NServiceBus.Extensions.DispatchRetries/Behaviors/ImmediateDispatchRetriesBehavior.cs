@@ -12,19 +12,28 @@ namespace NServiceBus.Extensions.DispatchRetries.Behaviors
     class ImmediateDispatchRetriesBehavior : Behavior<IDispatchContext>
     {
         private readonly AsyncPolicy _defaultImmediateRetryPolicy;
+        private readonly ResiliencePipeline _defaultImmediateRetryResiliencePipeline;
+
         private readonly AsyncPolicy _defaultBatchRetryPolicy;
         private readonly ResiliencePipeline _defaultBatchRetryResiliencePipeline;
-        private readonly ResiliencePipeline _defaultImmediateRetryResiliencePipeline;
 
         public ImmediateDispatchRetriesBehavior(IReadOnlySettings readOnlySettings)
         {
             readOnlySettings.TryGet(Constants.DefaultImmediateDispatchRetryPolicy, out _defaultImmediateRetryPolicy);
-            readOnlySettings.TryGet(Constants.DefaultBatchDispatchRetryPolicy, out _defaultBatchRetryPolicy);
-            
-            readOnlySettings.TryGet(Constants.DefaultBatchDispatchRetryResiliencePipeline, out _defaultBatchRetryResiliencePipeline);
             readOnlySettings.TryGet(Constants.DefaultImmediateDispatchRetryResiliencePipeline, out _defaultImmediateRetryResiliencePipeline);
+
+            if (_defaultImmediateRetryPolicy != null && _defaultImmediateRetryResiliencePipeline != null)
+            {
+                //TODO warn if both a Policy and a ResiliencePipeline are set for the same dispatch mode and inform that only the ResiliencePipeline will be used    
+            }
+
+            readOnlySettings.TryGet(Constants.DefaultBatchDispatchRetryPolicy, out _defaultBatchRetryPolicy);
+            readOnlySettings.TryGet(Constants.DefaultBatchDispatchRetryResiliencePipeline, out _defaultBatchRetryResiliencePipeline);
             
-            //TODO warn if both a Policy and a ResiliencePipeline are set for the same dispatch mode and inform that only the ResiliencePipeline will be used
+            if (_defaultBatchRetryPolicy != null && _defaultBatchRetryResiliencePipeline != null)
+            {
+                //TODO warn if both a Policy and a ResiliencePipeline are set for the same dispatch mode and inform that only the ResiliencePipeline will be used    
+            }
         }
 
         public override Task Invoke(IDispatchContext context, Func<Task> next)

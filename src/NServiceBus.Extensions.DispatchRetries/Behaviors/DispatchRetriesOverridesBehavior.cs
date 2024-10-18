@@ -8,7 +8,6 @@ namespace NServiceBus.Extensions.DispatchRetries.Behaviors
     {
         public override Task Invoke(IIncomingPhysicalMessageContext context, Func<Task> next)
         {
-            //TODO: Add support for the resilience pipelines
             context.Extensions.Set(Constants.IncomingMessage, true);
             context.Extensions.Set(Constants.Overrides, new DispatchRetriesOverrides());
 
