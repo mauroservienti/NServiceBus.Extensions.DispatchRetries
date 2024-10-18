@@ -31,10 +31,10 @@ namespace NServiceBus.Extensions.DispatchRetries.AcceptanceTests
 
             Assert.That(context.ReplyMessageReceived, Is.True);
             Assert.That(context.AnotherReplyMessageReceived, Is.True);
-            Assert.That(0, Is.EqualTo(_numberOfImmediatePollyRetries), "Wrong number of immediate policy retries");
-            Assert.That(0, Is.EqualTo(_numberOfBatchPollyRetries), "Wrong number of batch policy retries");
-            Assert.That(1, Is.EqualTo(_numberOfOverriddenImmediatePollyRetries), "Wrong number of overridden immediate policy retries");
-            Assert.That(1, Is.EqualTo(_numberOfOverriddenBatchPollyRetries), "Wrong number of overridden batch policy retries");
+            Assert.That(_numberOfImmediatePollyRetries, Is.EqualTo(0), "Wrong number of immediate policy retries");
+            Assert.That(_numberOfBatchPollyRetries, Is.EqualTo(0), "Wrong number of batch policy retries");
+            Assert.That(_numberOfOverriddenImmediatePollyRetries, Is.EqualTo(1), "Wrong number of overridden immediate policy retries");
+            Assert.That(_numberOfOverriddenBatchPollyRetries, Is.EqualTo(1), "Wrong number of overridden batch policy retries");
         }
 
         class Context : ScenarioContext

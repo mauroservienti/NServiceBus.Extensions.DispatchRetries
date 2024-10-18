@@ -28,8 +28,8 @@ namespace NServiceBus.Extensions.DispatchRetries.AcceptanceTests
                 .Run();
 
             Assert.That(context.ReplyMessageReceived, Is.True);
-            Assert.That(0, Is.EqualTo(_numberOfPollyRetries));
-            Assert.That(1, Is.EqualTo(_numberOfOverriddenPollyRetries));
+            Assert.That(_numberOfPollyRetries, Is.EqualTo(0));
+            Assert.That(_numberOfOverriddenPollyRetries, Is.EqualTo(1));
         }
 
         class Context : ScenarioContext

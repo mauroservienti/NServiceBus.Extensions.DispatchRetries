@@ -33,8 +33,8 @@ namespace NServiceBus.Extensions.DispatchRetries.AcceptanceTests
 
             Assert.That(context.ReplyMessageReceived, Is.True);
             Assert.That(context.AnotherReplyMessageReceived, Is.True);
-            Assert.That(1, Is.EqualTo(_numberOfImmediatePollyPolicyRetries), "Wrong number of immediate policy retries");
-            Assert.That(1, Is.EqualTo(_numberOfBatchPollyPolicyRetries), "Wrong number of batch policy retries");
+            Assert.That(_numberOfImmediatePollyPolicyRetries, Is.EqualTo(1), "Wrong number of immediate policy retries");
+            Assert.That(_numberOfBatchPollyPolicyRetries, Is.EqualTo(1), "Wrong number of batch policy retries");
         }
         
         [Test]
@@ -54,8 +54,8 @@ namespace NServiceBus.Extensions.DispatchRetries.AcceptanceTests
 
             Assert.That(context.ReplyMessageReceived, Is.True);
             Assert.That(context.AnotherReplyMessageReceived, Is.True);
-            Assert.That(1, Is.EqualTo(_numberOfImmediatePollyResiliencePipelineRetries), "Wrong number of immediate resilience pipeline retries");
-            Assert.That(1, Is.EqualTo(_numberOfBatchPollyResiliencePipelineRetries), "Wrong number of batch resilience pipeline retries");
+            Assert.That(_numberOfImmediatePollyResiliencePipelineRetries, Is.EqualTo(1), "Wrong number of immediate resilience pipeline retries");
+            Assert.That(_numberOfBatchPollyResiliencePipelineRetries, Is.EqualTo(1), "Wrong number of batch resilience pipeline retries");
         }
 
         class Context : ScenarioContext
