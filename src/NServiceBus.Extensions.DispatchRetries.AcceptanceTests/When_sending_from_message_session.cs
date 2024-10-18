@@ -80,18 +80,16 @@ namespace NServiceBus.Extensions.DispatchRetries.AcceptanceTests
             {
                 EndpointSetup<UnreliableServer>(config =>
                 {
-                    var o = new RetryStrategyOptions 
-                    {
-                        MaxRetryAttempts = 1,
-                        OnRetry = _ =>
-                        {
-                            _numberOfPollyRetriesWithResilienceStrategy++;
-                            return ValueTask.CompletedTask;
-                        }
-                    };
-
                     var pipeline = new ResiliencePipelineBuilder()
-                        .AddRetry(o)
+                        .AddRetry(new RetryStrategyOptions 
+                        {
+                            MaxRetryAttempts = 1,
+                            OnRetry = _ =>
+                            {
+                                _numberOfPollyRetriesWithResilienceStrategy++;
+                                return ValueTask.CompletedTask;
+                            }
+                        })
                         .Build();
                     _ = config.DispatchRetries(pipeline);
                 });
