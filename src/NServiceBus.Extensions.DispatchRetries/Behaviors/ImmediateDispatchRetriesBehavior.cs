@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Linq;
+using System.Threading;
 using System.Threading.Tasks;
 using NServiceBus.Pipeline;
 using NServiceBus.Settings;
@@ -34,6 +35,7 @@ namespace NServiceBus.Extensions.DispatchRetries.Behaviors
 
         Task HandleIsolatedConsistency(IDispatchContext context, Func<Task> next)
         {
+            //TODO: Add support for the resilience pipelines
             var overrides = context.Extensions.Get<DispatchRetriesOverrides>(Constants.Overrides);
             if (overrides.ImmediateDispatchPolicyOverride != null)
             {
@@ -55,6 +57,7 @@ namespace NServiceBus.Extensions.DispatchRetries.Behaviors
 
         Task HandleDefaultConsistency(IDispatchContext context, Func<Task> next)
         {
+            //TODO: Add support for the resilience pipelines
             var overrides = context.Extensions.Get<DispatchRetriesOverrides>(Constants.Overrides);
             if (overrides.BatchDispatchPolicyOverride != null)
             {

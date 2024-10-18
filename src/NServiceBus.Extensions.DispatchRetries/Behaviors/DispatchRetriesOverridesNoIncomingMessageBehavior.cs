@@ -8,6 +8,7 @@ namespace NServiceBus.Extensions.DispatchRetries.Behaviors
     {
         public override Task Invoke(IRoutingContext context, Func<Task> next)
         {
+            //TODO: Add support for the resilience pipelines
             if (!context.Extensions.TryGet<bool>(Constants.IncomingMessage, out var isIncomingMessage))
             {
                 context.Extensions.Set(Constants.Overrides, new DispatchRetriesOverrides());
