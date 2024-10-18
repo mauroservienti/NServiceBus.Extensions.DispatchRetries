@@ -24,6 +24,7 @@ x64/
 x86/
 [Bb]in/
 [Oo]bj/
+nugets/
 
 # Visual Studio cache/options directory
 .vs/
