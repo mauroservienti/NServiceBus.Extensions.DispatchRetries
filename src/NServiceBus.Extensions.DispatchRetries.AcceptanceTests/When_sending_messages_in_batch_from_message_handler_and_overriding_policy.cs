@@ -164,7 +164,7 @@ namespace NServiceBus.Extensions.DispatchRetries.AcceptanceTests
                         })
                         .Build();
 
-                    context.OverrideBatchDispatchRetryStrategy(pipeline);
+                    context.OverrideBatchDispatchRetryResilienceStrategy(pipeline);
 
                     return context.Reply(new ReplyMessage());
                 }
