@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Threading.Tasks;
+using NServiceBus.Logging;
 using NServiceBus.Pipeline;
 using NServiceBus.Settings;
 using Polly;
@@ -8,6 +9,7 @@ namespace NServiceBus.Extensions.DispatchRetries.Behaviors
 {
     class BatchDispatchRetriesBehavior : Behavior<IBatchDispatchContext>
     {
+        static ILog logger = LogManager.GetLogger(typeof(BatchDispatchRetriesBehavior));
         private readonly AsyncPolicy _defaultRetryPolicy;
         private readonly ResiliencePipeline _defaultRetryResiliencePipeline;
 
@@ -18,7 +20,7 @@ namespace NServiceBus.Extensions.DispatchRetries.Behaviors
 
             if (_defaultRetryPolicy != null && _defaultRetryResiliencePipeline != null)
             {
-                //TODO warn if both a Policy and a ResiliencePipeline are set for the same dispatch mode and inform that only the ResiliencePipeline will be used    
+                logger.Warn("Both a default batch dispatch retry policy and a batch dispatch retry resilience strategy are configured. Only the batch dispatch retry resilience strategy will be used.");
             }
         }
 

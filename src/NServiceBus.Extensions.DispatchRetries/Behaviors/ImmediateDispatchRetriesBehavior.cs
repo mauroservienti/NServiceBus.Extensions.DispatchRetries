@@ -2,6 +2,7 @@
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
+using NServiceBus.Logging;
 using NServiceBus.Pipeline;
 using NServiceBus.Settings;
 using NServiceBus.Transport;
@@ -11,6 +12,7 @@ namespace NServiceBus.Extensions.DispatchRetries.Behaviors
 {
     class ImmediateDispatchRetriesBehavior : Behavior<IDispatchContext>
     {
+        static ILog logger = LogManager.GetLogger(typeof(ImmediateDispatchRetriesBehavior));
         private readonly AsyncPolicy _defaultImmediateRetryPolicy;
         private readonly ResiliencePipeline _defaultImmediateRetryResiliencePipeline;
 
@@ -24,7 +26,7 @@ namespace NServiceBus.Extensions.DispatchRetries.Behaviors
 
             if (_defaultImmediateRetryPolicy != null && _defaultImmediateRetryResiliencePipeline != null)
             {
-                //TODO warn if both a Policy and a ResiliencePipeline are set for the same dispatch mode and inform that only the ResiliencePipeline will be used    
+                logger.Warn("Both a default immediate dispatch retry policy and an immediate dispatch retry resilience strategy are configured. Only the immediate dispatch retry resilience strategy will be used.");
             }
 
             readOnlySettings.TryGet(Constants.DefaultBatchDispatchRetryPolicy, out _defaultBatchRetryPolicy);
@@ -32,7 +34,7 @@ namespace NServiceBus.Extensions.DispatchRetries.Behaviors
             
             if (_defaultBatchRetryPolicy != null && _defaultBatchRetryResiliencePipeline != null)
             {
-                //TODO warn if both a Policy and a ResiliencePipeline are set for the same dispatch mode and inform that only the ResiliencePipeline will be used    
+                logger.Warn("Both a default batch dispatch retry policy and a batch dispatch retry resilience strategy are configured. Only the batch dispatch retry resilience strategy will be used.");
             }
         }
 
