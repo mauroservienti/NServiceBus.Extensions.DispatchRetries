@@ -9,8 +9,8 @@ namespace NServiceBus.Extensions.DispatchRetries.AcceptanceTests
 {
     public class When_sending_messages_in_batch_from_message_handler_and_overriding_policy
     {
-        private static int _numberOfPollyRetries = 0;
-        private static int _numberOfOverriddenPollyRetries = 0;
+        private static int _numberOfPollyPolicyRetries = 0;
+        private static int _numberOfOverriddenPollyPolicyRetries = 0;
 
         [Test]
         public async Task should_be_retried_according_to_policy()
@@ -19,17 +19,17 @@ namespace NServiceBus.Extensions.DispatchRetries.AcceptanceTests
                 .WithEndpoint<SenderEndpoint>(g => g.When(b =>
                 {
                     var options = new SendOptions();
-                    options.SetDestination(nameof(ReceiverEndpoint));
+                    options.SetDestination(nameof(ReceiverEndpointWithPolicy));
 
                     return b.Send(new Message(), options);
                 }))
-                .WithEndpoint<ReceiverEndpoint>()
+                .WithEndpoint<ReceiverEndpointWithPolicy>()
                 .Done(c => c.ReplyMessageReceived)
                 .Run();
 
             Assert.That(context.ReplyMessageReceived, Is.True);
-            Assert.That(_numberOfPollyRetries, Is.EqualTo(0));
-            Assert.That(_numberOfOverriddenPollyRetries, Is.EqualTo(1));
+            Assert.That(_numberOfPollyPolicyRetries, Is.EqualTo(0));
+            Assert.That(_numberOfOverriddenPollyPolicyRetries, Is.EqualTo(1));
         }
 
         class Context : ScenarioContext
@@ -65,9 +65,9 @@ namespace NServiceBus.Extensions.DispatchRetries.AcceptanceTests
             }
         }
 
-        class ReceiverEndpoint : EndpointConfigurationBuilder
+        class ReceiverEndpointWithPolicy : EndpointConfigurationBuilder
         {
-            public ReceiverEndpoint()
+            public ReceiverEndpointWithPolicy()
             {
                 EndpointSetup<UnreliableServer>(config =>
                 {
@@ -75,7 +75,7 @@ namespace NServiceBus.Extensions.DispatchRetries.AcceptanceTests
                         .Handle<Exception>(ex=>true)
                         .RetryAsync(1, (exception, retryAttempt, context) =>
                         {
-                            _numberOfPollyRetries++;
+                            _numberOfPollyPolicyRetries++;
                         });
 
                     var dispatchRetriesOptions = config.DispatchRetries();
@@ -91,7 +91,7 @@ namespace NServiceBus.Extensions.DispatchRetries.AcceptanceTests
                         .Handle<Exception>(ex=>true)
                         .RetryAsync(1, (exception, retryAttempt, context) =>
                         {
-                            _numberOfOverriddenPollyRetries++;
+                            _numberOfOverriddenPollyPolicyRetries++;
                         });
 
                     context.OverrideBatchDispatchRetryPolicy(policy);
