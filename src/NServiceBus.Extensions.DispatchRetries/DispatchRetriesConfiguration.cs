@@ -31,7 +31,6 @@ namespace NServiceBus
             DefaultImmediateDispatchRetriesResilienceStrategy(defaultBatchAndImmediateDispatchRetriesResiliencePipeline);
         }
 
-        [Obsolete("Favor using ResiliencePipeline via the DefaultImmediateDispatchRetriesResiliencePipeline, this method will be treated as an error starting V4 and removed in V5.")]
         public void DefaultImmediateDispatchRetriesPolicy(AsyncPolicy immediateDispatchRetryPolicy)
         {
             ArgumentNullException.ThrowIfNull(immediateDispatchRetryPolicy);
@@ -46,7 +45,6 @@ namespace NServiceBus
             _configuration.GetSettings().Set(Constants.DefaultImmediateDispatchRetryResiliencePipeline, immediateDispatchRetryResiliencePipeline);
         }
 
-        [Obsolete("Favor using ResiliencePipeline via the DefaultBatchDispatchRetriesResiliencePipeline, this method will be treated as an error starting V4 and removed in V5.")]
         public void DefaultBatchDispatchRetriesPolicy(AsyncPolicy batchDispatchRetryPolicy)
         {
             ArgumentNullException.ThrowIfNull(batchDispatchRetryPolicy);
