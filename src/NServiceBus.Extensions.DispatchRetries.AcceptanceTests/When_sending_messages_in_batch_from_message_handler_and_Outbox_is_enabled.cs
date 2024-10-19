@@ -190,7 +190,7 @@ namespace NServiceBus.Extensions.DispatchRetries.AcceptanceTests
                         .Build();
 
                     var dispatchRetriesOptions = config.DispatchRetries();
-                    dispatchRetriesOptions.DefaultBatchDispatchRetriesResiliencePipeline(pipeline);
+                    dispatchRetriesOptions.DefaultBatchDispatchRetriesResilienceStrategy(pipeline);
 
                     var persistence = config.UsePersistence<SqlPersistence>();
                     var dialect = persistence.SqlDialect<SqlDialect.PostgreSql>();

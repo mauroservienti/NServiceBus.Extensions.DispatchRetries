@@ -130,7 +130,7 @@ namespace NServiceBus.Extensions.DispatchRetries.AcceptanceTests
                         .Build();
 
                     var dispatchRetriesOptions = config.DispatchRetries();
-                    dispatchRetriesOptions.DefaultBatchDispatchRetriesResiliencePipeline(pipeline);
+                    dispatchRetriesOptions.DefaultBatchDispatchRetriesResilienceStrategy(pipeline);
                 });
             }
 

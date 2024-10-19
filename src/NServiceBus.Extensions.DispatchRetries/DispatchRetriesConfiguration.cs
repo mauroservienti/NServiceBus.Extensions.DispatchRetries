@@ -27,8 +27,8 @@ namespace NServiceBus
         internal DispatchRetriesConfiguration(EndpointConfiguration configuration, ResiliencePipeline defaultBatchAndImmediateDispatchRetriesResiliencePipeline)
             : this(configuration)
         {
-            DefaultBatchDispatchRetriesResiliencePipeline(defaultBatchAndImmediateDispatchRetriesResiliencePipeline);
-            DefaultImmediateDispatchRetriesResiliencePipeline(defaultBatchAndImmediateDispatchRetriesResiliencePipeline);
+            DefaultBatchDispatchRetriesResilienceStrategy(defaultBatchAndImmediateDispatchRetriesResiliencePipeline);
+            DefaultImmediateDispatchRetriesResilienceStrategy(defaultBatchAndImmediateDispatchRetriesResiliencePipeline);
         }
 
         [Obsolete("Favor using ResiliencePipeline via the DefaultImmediateDispatchRetriesResiliencePipeline, this method will be treated as an error starting V4 and removed in V5.")]
@@ -39,7 +39,7 @@ namespace NServiceBus
             _configuration.GetSettings().Set(Constants.DefaultImmediateDispatchRetryPolicy, immediateDispatchRetryPolicy);
         }
         
-        public void DefaultImmediateDispatchRetriesResiliencePipeline(ResiliencePipeline immediateDispatchRetryResiliencePipeline)
+        public void DefaultImmediateDispatchRetriesResilienceStrategy(ResiliencePipeline immediateDispatchRetryResiliencePipeline)
         {
             ArgumentNullException.ThrowIfNull(immediateDispatchRetryResiliencePipeline);
 
@@ -54,7 +54,7 @@ namespace NServiceBus
             _configuration.GetSettings().Set(Constants.DefaultBatchDispatchRetryPolicy, batchDispatchRetryPolicy);
         }
         
-        public void DefaultBatchDispatchRetriesResiliencePipeline(ResiliencePipeline batchDispatchResiliencePipeline)
+        public void DefaultBatchDispatchRetriesResilienceStrategy(ResiliencePipeline batchDispatchResiliencePipeline)
         {
             ArgumentNullException.ThrowIfNull(batchDispatchResiliencePipeline);
 

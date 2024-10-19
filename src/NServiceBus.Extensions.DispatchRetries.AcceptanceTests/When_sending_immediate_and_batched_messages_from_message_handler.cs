@@ -179,8 +179,8 @@ namespace NServiceBus.Extensions.DispatchRetries.AcceptanceTests
                         .Build();
 
                     var dispatchRetriesOptions = config.DispatchRetries();
-                    dispatchRetriesOptions.DefaultBatchDispatchRetriesResiliencePipeline(batchPipeline);
-                    dispatchRetriesOptions.DefaultImmediateDispatchRetriesResiliencePipeline(immediatePipeline);
+                    dispatchRetriesOptions.DefaultBatchDispatchRetriesResilienceStrategy(batchPipeline);
+                    dispatchRetriesOptions.DefaultImmediateDispatchRetriesResilienceStrategy(immediatePipeline);
                 });
             }
 

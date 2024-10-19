@@ -134,7 +134,7 @@ namespace NServiceBus.Extensions.DispatchRetries.AcceptanceTests
                     _ = config.DispatchRetries(pipeline);
 
                     var dispatchRetriesOptions = config.DispatchRetries();
-                    dispatchRetriesOptions.DefaultImmediateDispatchRetriesResiliencePipeline(pipeline);
+                    dispatchRetriesOptions.DefaultImmediateDispatchRetriesResilienceStrategy(pipeline);
                 });
             }
 
