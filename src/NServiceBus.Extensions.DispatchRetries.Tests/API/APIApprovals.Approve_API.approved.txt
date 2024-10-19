@@ -4,12 +4,8 @@ namespace NServiceBus
 {
     public class DispatchRetriesConfiguration
     {
-        [System.Obsolete("Favor using ResiliencePipeline via the DefaultBatchDispatchRetriesResiliencePipel" +
-            "ine, this method will be treated as an error starting V4 and removed in V5.")]
         public void DefaultBatchDispatchRetriesPolicy(Polly.AsyncPolicy batchDispatchRetryPolicy) { }
         public void DefaultBatchDispatchRetriesResilienceStrategy(Polly.ResiliencePipeline batchDispatchResiliencePipeline) { }
-        [System.Obsolete("Favor using ResiliencePipeline via the DefaultImmediateDispatchRetriesResilienceP" +
-            "ipeline, this method will be treated as an error starting V4 and removed in V5.")]
         public void DefaultImmediateDispatchRetriesPolicy(Polly.AsyncPolicy immediateDispatchRetryPolicy) { }
         public void DefaultImmediateDispatchRetriesResilienceStrategy(Polly.ResiliencePipeline immediateDispatchRetryResiliencePipeline) { }
     }
