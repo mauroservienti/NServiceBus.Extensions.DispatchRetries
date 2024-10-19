@@ -36,7 +36,7 @@ namespace NServiceBus.Extensions.DispatchRetries.AcceptanceTests
 
             
             var warning = context.Logs.Single(l=>l.Level== LogLevel.Warn && l.LoggerName.EndsWith(nameof(BatchDispatchRetriesBehavior)));
-            Approvals.Verify(warning);
+            Approvals.Verify(warning.Message);
             
             Assert.That(context.MessageReceived, Is.True);
             Assert.That(_numberOfPollyRetriesWithPolicy, Is.EqualTo(0));
