@@ -17,6 +17,11 @@
   </ItemGroup>
 
   <ItemGroup>
+    <PackageReference Include="NServiceBus" Version="9.2.2" />
+    <PackageReference Include="Polly" Version="8.4.2" />
+  </ItemGroup>
+
+  <ItemGroup>
     <ProjectReference Include="..\NServiceBus.Extensions.DispatchRetries\NServiceBus.Extensions.DispatchRetries.csproj" />
   </ItemGroup>
 
