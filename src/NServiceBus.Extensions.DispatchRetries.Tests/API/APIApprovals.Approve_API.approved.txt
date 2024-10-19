@@ -22,6 +22,7 @@ namespace NServiceBus
     public static class MessageHandlerContextExtensions
     {
         public static void OverrideBatchDispatchRetryPolicy(this NServiceBus.IMessageHandlerContext context, Polly.AsyncPolicy batchDispatchRetryPolicy) { }
+        public static void OverrideBatchDispatchRetryStrategy(this NServiceBus.IMessageHandlerContext context, Polly.ResiliencePipeline batchDispatchRetryResiliencePipeline) { }
         public static void OverrideImmediateDispatchRetryPolicy(this NServiceBus.IMessageHandlerContext context, Polly.AsyncPolicy immediateDispatchRetryPolicy) { }
     }
 }

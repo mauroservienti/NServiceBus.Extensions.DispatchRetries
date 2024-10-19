@@ -4,6 +4,7 @@ using NServiceBus.AcceptanceTesting;
 using NServiceBus.AttributeRouting.AcceptanceTests;
 using NUnit.Framework;
 using Polly;
+using Polly.Retry;
 
 namespace NServiceBus.Extensions.DispatchRetries.AcceptanceTests
 {
@@ -11,6 +12,9 @@ namespace NServiceBus.Extensions.DispatchRetries.AcceptanceTests
     {
         private static int _numberOfPollyPolicyRetries = 0;
         private static int _numberOfOverriddenPollyPolicyRetries = 0;
+
+        private static int _numberOfPollyResiliencePipelineRetries = 0;
+        private static int _numberOfOverriddenPollyResiliencePipelineRetries = 0;
 
         [Test]
         public async Task should_be_retried_according_to_policy()
@@ -30,6 +34,26 @@ namespace NServiceBus.Extensions.DispatchRetries.AcceptanceTests
             Assert.That(context.ReplyMessageReceived, Is.True);
             Assert.That(_numberOfPollyPolicyRetries, Is.EqualTo(0));
             Assert.That(_numberOfOverriddenPollyPolicyRetries, Is.EqualTo(1));
+        }
+        
+        [Test]
+        public async Task should_be_retried_according_to_resilience_pipeline()
+        {
+            var context = await Scenario.Define<Context>()
+                .WithEndpoint<SenderEndpoint>(g => g.When(b =>
+                {
+                    var options = new SendOptions();
+                    options.SetDestination(nameof(ReceiverEndpointWithResiliencePipeline));
+
+                    return b.Send(new Message(), options);
+                }))
+                .WithEndpoint<ReceiverEndpointWithResiliencePipeline>()
+                .Done(c => c.ReplyMessageReceived)
+                .Run();
+
+            Assert.That(context.ReplyMessageReceived, Is.True);
+            Assert.That(_numberOfPollyResiliencePipelineRetries, Is.EqualTo(0));
+            Assert.That(_numberOfOverriddenPollyResiliencePipelineRetries, Is.EqualTo(1));
         }
 
         class Context : ScenarioContext
@@ -95,6 +119,52 @@ namespace NServiceBus.Extensions.DispatchRetries.AcceptanceTests
                         });
 
                     context.OverrideBatchDispatchRetryPolicy(policy);
+
+                    return context.Reply(new ReplyMessage());
+                }
+            }
+        }
+        
+        class ReceiverEndpointWithResiliencePipeline : EndpointConfigurationBuilder
+        {
+            public ReceiverEndpointWithResiliencePipeline()
+            {
+                EndpointSetup<UnreliableServer>(config =>
+                {
+                    var pipeline = new ResiliencePipelineBuilder()
+                        .AddRetry(new RetryStrategyOptions 
+                        {
+                            MaxRetryAttempts = 1,
+                            OnRetry = _ =>
+                            {
+                                _numberOfPollyResiliencePipelineRetries++;
+                                return ValueTask.CompletedTask;
+                            }
+                        })
+                        .Build();
+
+                    var dispatchRetriesOptions = config.DispatchRetries();
+                    dispatchRetriesOptions.DefaultBatchDispatchRetriesResiliencePipeline(pipeline);
+                });
+            }
+
+            class Handler : IHandleMessages<Message>
+            {
+                public Task Handle(Message message, IMessageHandlerContext context)
+                {
+                    var pipeline = new ResiliencePipelineBuilder()
+                        .AddRetry(new RetryStrategyOptions 
+                        {
+                            MaxRetryAttempts = 1,
+                            OnRetry = _ =>
+                            {
+                                _numberOfOverriddenPollyResiliencePipelineRetries++;
+                                return ValueTask.CompletedTask;
+                            }
+                        })
+                        .Build();
+
+                    context.OverrideBatchDispatchRetryStrategy(pipeline);
 
                     return context.Reply(new ReplyMessage());
                 }

@@ -27,5 +27,16 @@ namespace NServiceBus
             var overrides = context.Extensions.Get<DispatchRetriesOverrides>(Constants.Overrides);
             overrides.BatchDispatchPolicyOverride = batchDispatchRetryPolicy;
         }
+        
+        public static void OverrideBatchDispatchRetryStrategy(this IMessageHandlerContext context, ResiliencePipeline batchDispatchRetryResiliencePipeline)
+        {
+            if (batchDispatchRetryResiliencePipeline == null)
+            {
+                throw new ArgumentNullException(nameof(batchDispatchRetryResiliencePipeline));
+            }
+
+            var overrides = context.Extensions.Get<DispatchRetriesOverrides>(Constants.Overrides);
+            overrides.BatchDispatchResiliencePipelineOverride = batchDispatchRetryResiliencePipeline;
+        }
     }
 }

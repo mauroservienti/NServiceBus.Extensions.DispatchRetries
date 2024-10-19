@@ -44,8 +44,12 @@ namespace NServiceBus.Extensions.DispatchRetries.Behaviors
 
         Task HandleIsolatedConsistency(IDispatchContext context, Func<Task> next)
         {
-            //TODO: Add support for the resilience pipelines
             var overrides = context.Extensions.Get<DispatchRetriesOverrides>(Constants.Overrides);
+            if (overrides.ImmediateDispatchResiliencePipelineOverride != null)
+            {
+                return overrides.ImmediateDispatchResiliencePipelineOverride.ExecuteAsync(_=> new ValueTask(next()), context.CancellationToken).AsTask();
+            }
+            
             if (overrides.ImmediateDispatchPolicyOverride != null)
             {
                 return overrides.ImmediateDispatchPolicyOverride.ExecuteAsync(next);
@@ -66,8 +70,12 @@ namespace NServiceBus.Extensions.DispatchRetries.Behaviors
 
         Task HandleDefaultConsistency(IDispatchContext context, Func<Task> next)
         {
-            //TODO: Add support for the resilience pipelines
             var overrides = context.Extensions.Get<DispatchRetriesOverrides>(Constants.Overrides);
+            if (overrides.BatchDispatchResiliencePipelineOverride != null)
+            {
+                return overrides.BatchDispatchResiliencePipelineOverride.ExecuteAsync(_=>new ValueTask(next()), context.CancellationToken).AsTask();
+            }
+            
             if (overrides.BatchDispatchPolicyOverride != null)
             {
                 return overrides.BatchDispatchPolicyOverride.ExecuteAsync(next);
