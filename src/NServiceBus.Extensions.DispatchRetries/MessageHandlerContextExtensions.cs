@@ -8,10 +8,7 @@ namespace NServiceBus
     {
         public static void OverrideImmediateDispatchRetryPolicy(this IMessageHandlerContext context, AsyncPolicy immediateDispatchRetryPolicy)
         {
-            if (immediateDispatchRetryPolicy == null)
-            {
-                throw new ArgumentNullException(nameof(immediateDispatchRetryPolicy));
-            }
+            ArgumentNullException.ThrowIfNull(immediateDispatchRetryPolicy);
 
             var overrides = context.Extensions.Get<DispatchRetriesOverrides>(Constants.Overrides);
             overrides.ImmediateDispatchPolicyOverride = immediateDispatchRetryPolicy;
@@ -19,10 +16,7 @@ namespace NServiceBus
 
         public static void OverrideBatchDispatchRetryPolicy(this IMessageHandlerContext context, AsyncPolicy batchDispatchRetryPolicy)
         {
-            if (batchDispatchRetryPolicy == null)
-            {
-                throw new ArgumentNullException(nameof(batchDispatchRetryPolicy));
-            }
+            ArgumentNullException.ThrowIfNull(batchDispatchRetryPolicy);
 
             var overrides = context.Extensions.Get<DispatchRetriesOverrides>(Constants.Overrides);
             overrides.BatchDispatchPolicyOverride = batchDispatchRetryPolicy;
@@ -30,10 +24,7 @@ namespace NServiceBus
         
         public static void OverrideBatchDispatchRetryStrategy(this IMessageHandlerContext context, ResiliencePipeline batchDispatchRetryResiliencePipeline)
         {
-            if (batchDispatchRetryResiliencePipeline == null)
-            {
-                throw new ArgumentNullException(nameof(batchDispatchRetryResiliencePipeline));
-            }
+            ArgumentNullException.ThrowIfNull(batchDispatchRetryResiliencePipeline);
 
             var overrides = context.Extensions.Get<DispatchRetriesOverrides>(Constants.Overrides);
             overrides.BatchDispatchResiliencePipelineOverride = batchDispatchRetryResiliencePipeline;
