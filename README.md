@@ -53,6 +53,7 @@ var resiliencePipeline = new ResiliencePipelineBuilder()
         MaxRetryAttempts = 3,
         OnRetry = _ => ValueTask.CompletedTask
     })
+    .Build();
 //enable DispatchRetries Feature
 endpointConfiguration.DispatchRetries(resiliencePipeline);
 ```
@@ -140,6 +141,7 @@ var resiliencePipeline = new ResiliencePipelineBuilder()
         MaxRetryAttempts = 3,
         OnRetry = _ => ValueTask.CompletedTask
     })
+    .Build();
 //enable DispatchRetries Feature
 endpointConfiguration.DispatchRetries(resiliencePipeline);
 ```
