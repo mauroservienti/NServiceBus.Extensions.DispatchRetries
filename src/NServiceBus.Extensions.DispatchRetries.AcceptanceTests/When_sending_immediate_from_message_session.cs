@@ -4,21 +4,23 @@ using NServiceBus.AcceptanceTesting;
 using NServiceBus.AttributeRouting.AcceptanceTests;
 using NUnit.Framework;
 using Polly;
+using Polly.Retry;
 
 namespace NServiceBus.Extensions.DispatchRetries.AcceptanceTests
 {
     public class When_sending_immediate_from_message_session
     {
-        private static int _numberOfPollyRetries = 0;
+        private static int _numberOfPollyPolicyRetries = 0;
+        private static int _numberOfPollyRetriesWithResilienceStrategy = 0;
 
         [Test]
         public async Task should_be_retried_according_to_policy()
         {
             var context = await Scenario.Define<Context>()
-                .WithEndpoint<SenderEndpoint>(g => g.When(b =>
+                .WithEndpoint<SenderEndpointWithPolicy>(g => g.When(b =>
                 {
                     var options = new SendOptions();
-                    options.SetDestination("ReceiverEndpoint");
+                    options.SetDestination(nameof(ReceiverEndpoint));
                     options.RequireImmediateDispatch();
 
                     return b.Send(new Message(), options);
@@ -28,7 +30,27 @@ namespace NServiceBus.Extensions.DispatchRetries.AcceptanceTests
                 .Run();
 
             Assert.That(context.MessageReceived, Is.True);
-            Assert.That(1, Is.EqualTo(_numberOfPollyRetries));
+            Assert.That(_numberOfPollyPolicyRetries, Is.EqualTo(1));
+        }
+        
+        [Test]
+        public async Task should_be_retried_according_to_resilience_pipeline()
+        {
+            var context = await Scenario.Define<Context>()
+                .WithEndpoint<SenderEndpointWithResiliencePipeline>(g => g.When(b =>
+                {
+                    var options = new SendOptions();
+                    options.SetDestination(nameof(ReceiverEndpoint));
+                    options.RequireImmediateDispatch();
+
+                    return b.Send(new Message(), options);
+                }))
+                .WithEndpoint<ReceiverEndpoint>()
+                .Done(c => c.MessageReceived)
+                .Run();
+
+            Assert.That(context.MessageReceived, Is.True);
+            Assert.That(_numberOfPollyRetriesWithResilienceStrategy, Is.EqualTo(1));
         }
 
         class Context : ScenarioContext
@@ -36,9 +58,9 @@ namespace NServiceBus.Extensions.DispatchRetries.AcceptanceTests
             public bool MessageReceived { get; set; }
         }
 
-        class SenderEndpoint : EndpointConfigurationBuilder
+        class SenderEndpointWithPolicy : EndpointConfigurationBuilder
         {
-            public SenderEndpoint()
+            public SenderEndpointWithPolicy()
             {
                 EndpointSetup<UnreliableServer>(config =>
                 {
@@ -46,10 +68,32 @@ namespace NServiceBus.Extensions.DispatchRetries.AcceptanceTests
                         .Handle<Exception>(ex=>true)
                         .RetryAsync(1, (exception, retryAttempt, context) =>
                         {
-                            _numberOfPollyRetries++;
+                            _numberOfPollyPolicyRetries++;
                         });
 
-                    var dispatchRetriesOptions= config.DispatchRetries(policy);
+                    _ = config.DispatchRetries(policy);
+                });
+            }
+        }
+        
+        class SenderEndpointWithResiliencePipeline : EndpointConfigurationBuilder
+        {
+            public SenderEndpointWithResiliencePipeline()
+            {
+                EndpointSetup<UnreliableServer>(config =>
+                {
+                    var pipeline = new ResiliencePipelineBuilder()
+                        .AddRetry(new RetryStrategyOptions 
+                        {
+                            MaxRetryAttempts = 1,
+                            OnRetry = _ =>
+                            {
+                                _numberOfPollyRetriesWithResilienceStrategy++;
+                                return ValueTask.CompletedTask;
+                            }
+                        })
+                        .Build();
+                    _ = config.DispatchRetries(pipeline);
                 });
             }
         }

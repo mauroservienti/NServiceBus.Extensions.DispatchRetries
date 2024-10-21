@@ -8,7 +8,7 @@ namespace NServiceBus.Extensions.DispatchRetries.Behaviors
     {
         public override Task Invoke(IRoutingContext context, Func<Task> next)
         {
-            if (!context.Extensions.TryGet<bool>(Constants.IncomingMessage, out var isIncomingMessage))
+            if (!context.Extensions.TryGet<bool>(Constants.IncomingMessage, out _))
             {
                 context.Extensions.Set(Constants.Overrides, new DispatchRetriesOverrides());
             }

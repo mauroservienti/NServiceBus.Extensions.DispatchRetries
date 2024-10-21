@@ -1,0 +1,1 @@
+﻿Both a default batch dispatch retry policy and a batch dispatch retry resilience strategy are configured. Only the batch dispatch retry resilience strategy will be used.

@@ -1,21 +1,26 @@
 ﻿[assembly: System.Reflection.AssemblyMetadata("RepositoryUrl", "https://github.com/mauroservienti/NServiceBus.Extensions.DispatchRetries")]
+[assembly: System.Runtime.CompilerServices.InternalsVisibleTo("NServiceBus.Extensions.DispatchRetries.AcceptanceTests")]
 [assembly: System.Runtime.Versioning.TargetFramework(".NETCoreApp,Version=v8.0", FrameworkDisplayName=".NET 8.0")]
 namespace NServiceBus
 {
     public class DispatchRetriesConfiguration
     {
-        public DispatchRetriesConfiguration(NServiceBus.EndpointConfiguration configuration, Polly.AsyncPolicy defaultBatchAndImmediateDispatchRetriesPolicy) { }
         public void DefaultBatchDispatchRetriesPolicy(Polly.AsyncPolicy batchDispatchRetryPolicy) { }
+        public void DefaultBatchDispatchRetriesResilienceStrategy(Polly.ResiliencePipeline batchDispatchResiliencePipeline) { }
         public void DefaultImmediateDispatchRetriesPolicy(Polly.AsyncPolicy immediateDispatchRetryPolicy) { }
+        public void DefaultImmediateDispatchRetriesResilienceStrategy(Polly.ResiliencePipeline immediateDispatchRetryResiliencePipeline) { }
     }
     public static class DispatchRetriesEndpointConfigurationExtensions
     {
         public static NServiceBus.DispatchRetriesConfiguration DispatchRetries(this NServiceBus.EndpointConfiguration configuration) { }
         public static NServiceBus.DispatchRetriesConfiguration DispatchRetries(this NServiceBus.EndpointConfiguration configuration, Polly.AsyncPolicy defaultBatchAndImmediateDispatchRetriesPolicy) { }
+        public static NServiceBus.DispatchRetriesConfiguration DispatchRetries(this NServiceBus.EndpointConfiguration configuration, Polly.ResiliencePipeline defaultBatchAndImmediateDispatchRetriesResiliencePipeline) { }
     }
     public static class MessageHandlerContextExtensions
     {
         public static void OverrideBatchDispatchRetryPolicy(this NServiceBus.IMessageHandlerContext context, Polly.AsyncPolicy batchDispatchRetryPolicy) { }
+        public static void OverrideBatchDispatchRetryResilienceStrategy(this NServiceBus.IMessageHandlerContext context, Polly.ResiliencePipeline batchDispatchRetryResiliencePipeline) { }
         public static void OverrideImmediateDispatchRetryPolicy(this NServiceBus.IMessageHandlerContext context, Polly.AsyncPolicy immediateDispatchRetryPolicy) { }
+        public static void OverrideImmediateDispatchRetryResilienceStrategy(this NServiceBus.IMessageHandlerContext context, Polly.ResiliencePipeline immediateDispatchRetryResiliencePipeline) { }
     }
 }

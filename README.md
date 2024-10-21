@@ -2,7 +2,7 @@
 
 # NServiceBus.Extensions.DispatchRetries
 
-NServiceBus.Extensions.DispatchRetries is designed to allow to plug in [Polly](https://github.com/App-vNext/Polly) into the outgoing pipeline to retry message dispatching using Polly async policies.
+NServiceBus.Extensions.DispatchRetries is designed to allow to plug in [Polly](https://github.com/App-vNext/Polly) into the outgoing pipeline to retry message dispatching using Polly async policies or resilient strategies.
 
 ## Unreliable environments
 
@@ -30,7 +30,7 @@ class MyController
 
 In unreliable environments, if the above send operation fails, an exception will be thrown and will eventually result in a HTTP500 returned to the caller. Most of the time, retrying is a good enough countermeasure that will succeed.
 
-NServiceBus.Extensions.DispatchRetries can be configured to introduce a Polly async policy into the NServiceBus outgoing pipeline to atomatically retry dispatch operations:
+NServiceBus.Extensions.DispatchRetries can be configured to introduce a Polly async policy into the NServiceBus outgoing pipeline to automatically retry dispatch operations:
 
 ```csharp
 var endpointConfiguration = new EndpointConfiguration("myEndpointName");
@@ -39,6 +39,23 @@ var endpointConfiguration = new EndpointConfiguration("myEndpointName");
 var retryPolicy = Policy.Handle<Exception>().RetryAsync(3);
 //enable DispatchRetries Feature
 endpointConfiguration.DispatchRetries(retryPolicy);
+```
+
+or a resilence strategy:
+
+```csharp
+var endpointConfiguration = new EndpointConfiguration("myEndpointName");
+
+//define a Polly resilience pipeline
+var resiliencePipeline = new ResiliencePipelineBuilder()
+    .AddRetry(new RetryStrategyOptions 
+    {
+        MaxRetryAttempts = 3,
+        OnRetry = _ => ValueTask.CompletedTask
+    })
+    .Build();
+//enable DispatchRetries Feature
+endpointConfiguration.DispatchRetries(resiliencePipeline);
 ```
 
 With the above configuration in place, all _immediate_ and _batch_ dispatch operations will be retried 3 times in case of dispatch failures.
@@ -101,7 +118,7 @@ In this last case, both `AMessage` and `AnotherMessage` are always dispatched im
 
 ## Usage
 
-Basic configuration:
+Basic configuration using policies:
 
 ```csharp
 var endpointConfiguration = new EndpointConfiguration("myEndpointName");
@@ -112,9 +129,29 @@ var retryPolicy = Policy.Handle<Exception>().RetryAsync(3);
 endpointConfiguration.DispatchRetries(retryPolicy);
 ```
 
+Basic configuration using a resilience strategy:
+
+```csharp
+var endpointConfiguration = new EndpointConfiguration("myEndpointName");
+
+//define a Polly resilience pipeline
+var resiliencePipeline = new ResiliencePipelineBuilder()
+    .AddRetry(new RetryStrategyOptions 
+    {
+        MaxRetryAttempts = 3,
+        OnRetry = _ => ValueTask.CompletedTask
+    })
+    .Build();
+//enable DispatchRetries Feature
+endpointConfiguration.DispatchRetries(resiliencePipeline);
+```
+
 With the above configuration in place, all dispatch operations that fail will be retried 3 times before failing.
 
-It's possible to configure different policies for immediate or batch operations using the following code:
+> [!NOTE]
+> In case both a policy and a resilience strategy are defined, the resilience strategy will be used.
+
+It's possible to configure different policies or resilience strategies for immediate or batch operations. The following example shows how to define different policies for immediate and batch operations:
 
 ```csharp
 var endpointConfiguration = new EndpointConfiguration("myEndpointName");
@@ -133,13 +170,15 @@ var batchRetryPolicy = Policy.Handle<Exception>().RetryAsync(3);
 dispatchRetriesConfig.DefaultImmediateDispatchRetriesPolicy(batchRetryPolicy);
 ```
 
+To define different resilience strategies use `DefaultImmediateDispatchRetriesResilienceStrategy` and `DefaultBatchDispatchRetriesResilienceStrategy`.
+
 ### A note on retrying batch operations
 
 It's important to keep in mind the impact that retrying batch operations can have. When handling an incoming message there is an implicit timeout surrounding the message processing. This timeout can be enforced by the underlying infrastructure or by surrounding transactions. In this context, retrying a batch dispatch counts towards reaching any infrastructure or transaction timeout. Unless it is strictly necessary, it's better to let the [NServiceBus recoverability](https://docs.particular.net/nservicebus/recoverability/) mechanism to handle the failure. There are cases, though, in which retrying an incoming message to handle a dispatch failure might not be desirable, and it might be better to retry a few times the dispatch operation before reverting to the built-in recoverability mechanism. In essence: handle with care.
 
 ### Overrides
 
-When in the context of an incoming message, it might happen that the default configured retry policy doesn't satisfy the requirements. It's possible to override the default configured policy at the message handling context level:
+When in the context of an incoming message, it might happen that the default configured retry policy doesn't satisfy the requirements. It's possible to override the default configured policy or resilience strategy at the message handling context level:
 
 ```csharp
 class MyMessageHandler : IHandleMessages<MyMessage>
@@ -156,15 +195,15 @@ class MyMessageHandler : IHandleMessages<MyMessage>
 }
 ```
 
-`OverrideBatchDispatchRetryPolicy` can be used in a similar fashion to override the default batch dispatch retries policy.
+`OverrideBatchDispatchRetryPolicy` can be used in a similar fashion to override the default batch dispatch retries policy. To override resilience strategies use `OverrideImmediateDispatchRetryResilienceStrategy` and `OverrideBatchDispatchRetryResilienceStrategy`.
 
 #### A note on the NServiceBus Outbox
 
-NServiceBus.Extensions.DispatchRetries works with the [NServiceBus Outbox](https://docs.particular.net/nservicebus/outbox/) as well. Due to the way the outbox is implemented the policy applied to outgoing messages is always the immediate dispatch policy when using the outbox.
+NServiceBus.Extensions.DispatchRetries works with the [NServiceBus Outbox](https://docs.particular.net/nservicebus/outbox/) as well. Due to the way the outbox is implemented the policy or resilience strategy applied to outgoing messages is always the immediate dispatch one when using the outbox.
 
 #### A note on dispatching messages outside the context of an incoming message
 
-When dispatching messages, using either `IMessageSession` or `IEndpointInstance`, messages are immediately dispatched to the underlying transport without any batching. Due to the way NServiceBus works in this case the policy applied to outgoing messages is always the batch dispatch policy. 
+When dispatching messages, using either `IMessageSession` or `IEndpointInstance`, messages are immediately dispatched to the underlying transport without any batching. Due to the way NServiceBus works in this case the policy applied to outgoing messages is always the batch dispatch policy.
 
 ## How to install
 

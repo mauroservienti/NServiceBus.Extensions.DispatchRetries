@@ -13,5 +13,10 @@ namespace NServiceBus
         {
             return new DispatchRetriesConfiguration(configuration, defaultBatchAndImmediateDispatchRetriesPolicy);
         }
+        
+        public static DispatchRetriesConfiguration DispatchRetries(this EndpointConfiguration configuration, ResiliencePipeline defaultBatchAndImmediateDispatchRetriesResiliencePipeline)
+        {
+            return new DispatchRetriesConfiguration(configuration, defaultBatchAndImmediateDispatchRetriesResiliencePipeline);
+        }
     }
 }

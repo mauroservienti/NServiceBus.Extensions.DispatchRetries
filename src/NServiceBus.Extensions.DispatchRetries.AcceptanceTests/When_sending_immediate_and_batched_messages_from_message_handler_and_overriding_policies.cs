@@ -9,10 +9,10 @@ namespace NServiceBus.Extensions.DispatchRetries.AcceptanceTests
 {
     public class When_sending_immediate_and_batched_messages_from_message_handler_and_overriding_policies
     {
-        private static int _numberOfImmediatePollyRetries = 0;
-        private static int _numberOfBatchPollyRetries = 0;
-        private static int _numberOfOverriddenImmediatePollyRetries = 0;
-        private static int _numberOfOverriddenBatchPollyRetries = 0;
+        private static int _numberOfImmediatePollyPolicyRetries = 0;
+        private static int _numberOfBatchPollyPolicyRetries = 0;
+        private static int _numberOfOverriddenImmediatePollyPolicyRetries = 0;
+        private static int _numberOfOverriddenBatchPollyPolicyRetries = 0;
 
         [Test]
         public async Task should_be_retried_according_to_policy()
@@ -21,20 +21,20 @@ namespace NServiceBus.Extensions.DispatchRetries.AcceptanceTests
                 .WithEndpoint<SenderEndpoint>(g => g.When(b =>
                 {
                     var options = new SendOptions();
-                    options.SetDestination("ReceiverEndpoint");
+                    options.SetDestination(nameof(ReceiverEndpointWithPolicy));
 
                     return b.Send(new Message(), options);
                 }))
-                .WithEndpoint<ReceiverEndpoint>()
+                .WithEndpoint<ReceiverEndpointWithPolicy>()
                 .Done(c => c.ReplyMessageReceived && c.AnotherReplyMessageReceived)
                 .Run();
 
             Assert.That(context.ReplyMessageReceived, Is.True);
             Assert.That(context.AnotherReplyMessageReceived, Is.True);
-            Assert.That(0, Is.EqualTo(_numberOfImmediatePollyRetries), "Wrong number of immediate policy retries");
-            Assert.That(0, Is.EqualTo(_numberOfBatchPollyRetries), "Wrong number of batch policy retries");
-            Assert.That(1, Is.EqualTo(_numberOfOverriddenImmediatePollyRetries), "Wrong number of overridden immediate policy retries");
-            Assert.That(1, Is.EqualTo(_numberOfOverriddenBatchPollyRetries), "Wrong number of overridden batch policy retries");
+            Assert.That(_numberOfImmediatePollyPolicyRetries, Is.EqualTo(0), "Wrong number of immediate policy retries");
+            Assert.That(_numberOfBatchPollyPolicyRetries, Is.EqualTo(0), "Wrong number of batch policy retries");
+            Assert.That(_numberOfOverriddenImmediatePollyPolicyRetries, Is.EqualTo(1), "Wrong number of overridden immediate policy retries");
+            Assert.That(_numberOfOverriddenBatchPollyPolicyRetries, Is.EqualTo(1), "Wrong number of overridden batch policy retries");
         }
 
         class Context : ScenarioContext
@@ -88,9 +88,9 @@ namespace NServiceBus.Extensions.DispatchRetries.AcceptanceTests
             }
         }
 
-        class ReceiverEndpoint : EndpointConfigurationBuilder
+        class ReceiverEndpointWithPolicy : EndpointConfigurationBuilder
         {
-            public ReceiverEndpoint()
+            public ReceiverEndpointWithPolicy()
             {
                 EndpointSetup<UnreliableServer>(config =>
                 {
@@ -98,14 +98,14 @@ namespace NServiceBus.Extensions.DispatchRetries.AcceptanceTests
                         .Handle<Exception>(ex=>true)
                         .RetryAsync(1, (exception, retryAttempt, context) =>
                         {
-                            _numberOfBatchPollyRetries++;
+                            _numberOfBatchPollyPolicyRetries++;
                         });
 
                     var immediatePolicy = Policy
                         .Handle<Exception>(ex=>true)
                         .RetryAsync(1, (exception, retryAttempt, context) =>
                         {
-                            _numberOfImmediatePollyRetries++;
+                            _numberOfImmediatePollyPolicyRetries++;
                         });
 
                     var dispatchRetriesOptions = config.DispatchRetries();
@@ -122,7 +122,7 @@ namespace NServiceBus.Extensions.DispatchRetries.AcceptanceTests
                         .Handle<Exception>(ex=>true)
                         .RetryAsync(1, (exception, retryAttempt, context) =>
                         {
-                            _numberOfOverriddenBatchPollyRetries++;
+                            _numberOfOverriddenBatchPollyPolicyRetries++;
                         });
 
                     context.OverrideBatchDispatchRetryPolicy(batchPolicy);
@@ -131,7 +131,7 @@ namespace NServiceBus.Extensions.DispatchRetries.AcceptanceTests
                         .Handle<Exception>(ex=>true)
                         .RetryAsync(1, (exception, retryAttempt, context) =>
                         {
-                            _numberOfOverriddenImmediatePollyRetries++;
+                            _numberOfOverriddenImmediatePollyPolicyRetries++;
                         });
 
                     context.OverrideBatchDispatchRetryPolicy(batchPolicy);

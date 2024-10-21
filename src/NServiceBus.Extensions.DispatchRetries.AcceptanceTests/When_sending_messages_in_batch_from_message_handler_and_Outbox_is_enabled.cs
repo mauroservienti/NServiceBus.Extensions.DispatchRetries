@@ -7,6 +7,7 @@ using NServiceBus.AcceptanceTests;
 using NServiceBus.AttributeRouting.AcceptanceTests;
 using NUnit.Framework;
 using Polly;
+using Polly.Retry;
 
 namespace NServiceBus.Extensions.DispatchRetries.AcceptanceTests
 {
@@ -48,8 +49,6 @@ namespace NServiceBus.Extensions.DispatchRetries.AcceptanceTests
                 return Task.FromResult(false);
             }
 
-            ;
-
             await DockerCompose.Up(checker);
         }
 
@@ -59,7 +58,8 @@ namespace NServiceBus.Extensions.DispatchRetries.AcceptanceTests
             DockerCompose.Down();
         }
 
-        private static int _numberOfPollyRetries = 0;
+        private static int _numberOfPollyPolicyRetries = 0;
+        private static int _numberOfPollyResiliencePipelineRetries = 0;
 
         [Test]
         public async Task should_be_retried_according_to_policy()
@@ -68,16 +68,35 @@ namespace NServiceBus.Extensions.DispatchRetries.AcceptanceTests
                 .WithEndpoint<SenderEndpoint>(g => g.When(b =>
                 {
                     var options = new SendOptions();
-                    options.SetDestination("ReceiverEndpoint");
+                    options.SetDestination(nameof(ReceiverEndpointWithPolicy));
 
                     return b.Send(new Message(), options);
                 }))
-                .WithEndpoint<ReceiverEndpoint>()
+                .WithEndpoint<ReceiverEndpointWithPolicy>()
                 .Done(c => c.ReplyMessageReceived)
                 .Run();
 
             Assert.That(context.ReplyMessageReceived, Is.True);
-            Assert.That(1, Is.EqualTo(_numberOfPollyRetries));
+            Assert.That(_numberOfPollyPolicyRetries, Is.EqualTo(1));
+        }
+        
+        [Test]
+        public async Task should_be_retried_according_to_resilience_pipeline()
+        {
+            var context = await Scenario.Define<Context>()
+                .WithEndpoint<SenderEndpoint>(g => g.When(b =>
+                {
+                    var options = new SendOptions();
+                    options.SetDestination(nameof(ReceiverEndpointWithResiliencePipeline));
+
+                    return b.Send(new Message(), options);
+                }))
+                .WithEndpoint<ReceiverEndpointWithResiliencePipeline>()
+                .Done(c => c.ReplyMessageReceived)
+                .Run();
+
+            Assert.That(context.ReplyMessageReceived, Is.True);
+            Assert.That(_numberOfPollyResiliencePipelineRetries, Is.EqualTo(1));
         }
 
         class Context : ScenarioContext
@@ -112,9 +131,9 @@ namespace NServiceBus.Extensions.DispatchRetries.AcceptanceTests
             }
         }
 
-        class ReceiverEndpoint : EndpointConfigurationBuilder
+        class ReceiverEndpointWithPolicy : EndpointConfigurationBuilder
         {
-            public ReceiverEndpoint()
+            public ReceiverEndpointWithPolicy()
             {
                 EndpointSetup<UnreliableServer>(config =>
                 {
@@ -122,7 +141,7 @@ namespace NServiceBus.Extensions.DispatchRetries.AcceptanceTests
                         .Handle<Exception>()
                         .RetryAsync(1, (exception, retryAttempt) =>
                         {
-                            _numberOfPollyRetries++;
+                            _numberOfPollyPolicyRetries++;
                         });
 
                     var dispatchRetriesOptions = config.DispatchRetries();
@@ -135,6 +154,52 @@ namespace NServiceBus.Extensions.DispatchRetries.AcceptanceTests
                         var npgsqlParameter = (NpgsqlParameter)parameter;
                         npgsqlParameter.NpgsqlDbType = NpgsqlDbType.Jsonb;
                     });
+                    persistence.TablePrefix("policy");
+                    persistence.ConnectionBuilder(() => new NpgsqlConnection(postgres_connection));
+
+                    config.SetReceiveOnlyTransactionMode();
+                    config.EnableOutbox();
+                });
+            }
+
+            class Handler : IHandleMessages<Message>
+            {
+                public Task Handle(Message message, IMessageHandlerContext context)
+                {
+                    return context.Reply(new ReplyMessage());
+                }
+            }
+        }
+        
+        class ReceiverEndpointWithResiliencePipeline : EndpointConfigurationBuilder
+        {
+            public ReceiverEndpointWithResiliencePipeline()
+            {
+                EndpointSetup<UnreliableServer>(config =>
+                {
+                    var pipeline = new ResiliencePipelineBuilder()
+                        .AddRetry(new RetryStrategyOptions 
+                        {
+                            MaxRetryAttempts = 1,
+                            OnRetry = _ =>
+                            {
+                                _numberOfPollyResiliencePipelineRetries++;
+                                return ValueTask.CompletedTask;
+                            }
+                        })
+                        .Build();
+
+                    var dispatchRetriesOptions = config.DispatchRetries();
+                    dispatchRetriesOptions.DefaultBatchDispatchRetriesResilienceStrategy(pipeline);
+
+                    var persistence = config.UsePersistence<SqlPersistence>();
+                    var dialect = persistence.SqlDialect<SqlDialect.PostgreSql>();
+                    dialect.JsonBParameterModifier(parameter =>
+                    {
+                        var npgsqlParameter = (NpgsqlParameter)parameter;
+                        npgsqlParameter.NpgsqlDbType = NpgsqlDbType.Jsonb;
+                    });
+                    persistence.TablePrefix("pipeline");
                     persistence.ConnectionBuilder(() => new NpgsqlConnection(postgres_connection));
 
                     config.SetReceiveOnlyTransactionMode();

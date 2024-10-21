@@ -4,13 +4,17 @@ using NServiceBus.AcceptanceTesting;
 using NServiceBus.AttributeRouting.AcceptanceTests;
 using NUnit.Framework;
 using Polly;
+using Polly.Retry;
 
 namespace NServiceBus.Extensions.DispatchRetries.AcceptanceTests
 {
     public class When_sending_immediate_and_batched_messages_from_message_handler
     {
-        private static int _numberOfImmediatePollyRetries = 0;
-        private static int _numberOfBatchPollyRetries = 0;
+        private static int _numberOfImmediatePollyPolicyRetries = 0;
+        private static int _numberOfBatchPollyPolicyRetries = 0;
+        
+        private static int _numberOfImmediatePollyResiliencePipelineRetries = 0;
+        private static int _numberOfBatchPollyResiliencePipelineRetries = 0;
 
         [Test]
         public async Task should_be_retried_according_to_policy()
@@ -19,18 +23,39 @@ namespace NServiceBus.Extensions.DispatchRetries.AcceptanceTests
                 .WithEndpoint<SenderEndpoint>(g => g.When(b =>
                 {
                     var options = new SendOptions();
-                    options.SetDestination("ReceiverEndpoint");
+                    options.SetDestination(nameof(ReceiverEndpointWithPolicy));
 
                     return b.Send(new Message(), options);
                 }))
-                .WithEndpoint<ReceiverEndpoint>()
+                .WithEndpoint<ReceiverEndpointWithPolicy>()
                 .Done(c => c.ReplyMessageReceived && c.AnotherReplyMessageReceived)
                 .Run();
 
             Assert.That(context.ReplyMessageReceived, Is.True);
             Assert.That(context.AnotherReplyMessageReceived, Is.True);
-            Assert.That(1, Is.EqualTo(_numberOfImmediatePollyRetries), "Wrong number of immediate policy retries");
-            Assert.That(1, Is.EqualTo(_numberOfBatchPollyRetries), "Wrong number of batch policy retries");
+            Assert.That(_numberOfImmediatePollyPolicyRetries, Is.EqualTo(1), "Wrong number of immediate policy retries");
+            Assert.That(_numberOfBatchPollyPolicyRetries, Is.EqualTo(1), "Wrong number of batch policy retries");
+        }
+        
+        [Test]
+        public async Task should_be_retried_according_to_resilience_pipeline()
+        {
+            var context = await Scenario.Define<Context>()
+                .WithEndpoint<SenderEndpoint>(g => g.When(b =>
+                {
+                    var options = new SendOptions();
+                    options.SetDestination(nameof(ReceiverEndpointWithResiliencePipeline));
+
+                    return b.Send(new Message(), options);
+                }))
+                .WithEndpoint<ReceiverEndpointWithResiliencePipeline>()
+                .Done(c => c.ReplyMessageReceived && c.AnotherReplyMessageReceived)
+                .Run();
+
+            Assert.That(context.ReplyMessageReceived, Is.True);
+            Assert.That(context.AnotherReplyMessageReceived, Is.True);
+            Assert.That(_numberOfImmediatePollyResiliencePipelineRetries, Is.EqualTo(1), "Wrong number of immediate resilience pipeline retries");
+            Assert.That(_numberOfBatchPollyResiliencePipelineRetries, Is.EqualTo(1), "Wrong number of batch resilience pipeline retries");
         }
 
         class Context : ScenarioContext
@@ -84,29 +109,78 @@ namespace NServiceBus.Extensions.DispatchRetries.AcceptanceTests
             }
         }
 
-        class ReceiverEndpoint : EndpointConfigurationBuilder
+        class ReceiverEndpointWithPolicy : EndpointConfigurationBuilder
         {
-            public ReceiverEndpoint()
+            public ReceiverEndpointWithPolicy()
             {
                 EndpointSetup<UnreliableServer>(config =>
                 {
                     var batchPolicy = Policy
-                        .Handle<Exception>(ex=>true)
+                        .Handle<Exception>(ex => true)
                         .RetryAsync(1, (exception, retryAttempt, context) =>
                         {
-                            _numberOfBatchPollyRetries++;
+                            _numberOfBatchPollyPolicyRetries++;
                         });
 
                     var immediatePolicy = Policy
-                        .Handle<Exception>(ex=>true)
+                        .Handle<Exception>(ex => true)
                         .RetryAsync(1, (exception, retryAttempt, context) =>
                         {
-                            _numberOfImmediatePollyRetries++;
+                            _numberOfImmediatePollyPolicyRetries++;
                         });
 
                     var dispatchRetriesOptions = config.DispatchRetries();
                     dispatchRetriesOptions.DefaultBatchDispatchRetriesPolicy(batchPolicy);
                     dispatchRetriesOptions.DefaultImmediateDispatchRetriesPolicy(immediatePolicy);
+                });
+            }
+            
+            class Handler : IHandleMessages<Message>
+            {
+                public async Task Handle(Message message, IMessageHandlerContext context)
+                {
+                    var options = new ReplyOptions();
+                    options.RequireImmediateDispatch();
+                    await context.Reply(new ReplyMessage(), options);
+
+                    await context.Reply(new AnotherReplyMessage());
+                }
+            }
+        }
+
+        class ReceiverEndpointWithResiliencePipeline : EndpointConfigurationBuilder
+        {
+            public ReceiverEndpointWithResiliencePipeline()
+            {
+                EndpointSetup<UnreliableServer>(config =>
+                {
+                    var batchPipeline = new ResiliencePipelineBuilder()
+                        .AddRetry(new RetryStrategyOptions 
+                        {
+                            MaxRetryAttempts = 1,
+                            OnRetry = _ =>
+                            {
+                                _numberOfBatchPollyResiliencePipelineRetries++;
+                                return ValueTask.CompletedTask;
+                            }
+                        })
+                        .Build();
+                    
+                    var immediatePipeline = new ResiliencePipelineBuilder()
+                        .AddRetry(new RetryStrategyOptions 
+                        {
+                            MaxRetryAttempts = 1,
+                            OnRetry = _ =>
+                            {
+                                _numberOfImmediatePollyResiliencePipelineRetries++;
+                                return ValueTask.CompletedTask;
+                            }
+                        })
+                        .Build();
+
+                    var dispatchRetriesOptions = config.DispatchRetries();
+                    dispatchRetriesOptions.DefaultBatchDispatchRetriesResilienceStrategy(batchPipeline);
+                    dispatchRetriesOptions.DefaultImmediateDispatchRetriesResilienceStrategy(immediatePipeline);
                 });
             }
 

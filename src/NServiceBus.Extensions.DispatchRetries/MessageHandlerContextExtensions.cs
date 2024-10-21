@@ -8,24 +8,34 @@ namespace NServiceBus
     {
         public static void OverrideImmediateDispatchRetryPolicy(this IMessageHandlerContext context, AsyncPolicy immediateDispatchRetryPolicy)
         {
-            if (immediateDispatchRetryPolicy == null)
-            {
-                throw new ArgumentNullException(nameof(immediateDispatchRetryPolicy));
-            }
+            ArgumentNullException.ThrowIfNull(immediateDispatchRetryPolicy);
 
             var overrides = context.Extensions.Get<DispatchRetriesOverrides>(Constants.Overrides);
             overrides.ImmediateDispatchPolicyOverride = immediateDispatchRetryPolicy;
         }
+        
+        public static void OverrideImmediateDispatchRetryResilienceStrategy(this IMessageHandlerContext context, ResiliencePipeline immediateDispatchRetryResiliencePipeline)
+        {
+            ArgumentNullException.ThrowIfNull(immediateDispatchRetryResiliencePipeline);
+
+            var overrides = context.Extensions.Get<DispatchRetriesOverrides>(Constants.Overrides);
+            overrides.ImmediateDispatchResiliencePipelineOverride = immediateDispatchRetryResiliencePipeline;
+        }
 
         public static void OverrideBatchDispatchRetryPolicy(this IMessageHandlerContext context, AsyncPolicy batchDispatchRetryPolicy)
         {
-            if (batchDispatchRetryPolicy == null)
-            {
-                throw new ArgumentNullException(nameof(batchDispatchRetryPolicy));
-            }
+            ArgumentNullException.ThrowIfNull(batchDispatchRetryPolicy);
 
             var overrides = context.Extensions.Get<DispatchRetriesOverrides>(Constants.Overrides);
             overrides.BatchDispatchPolicyOverride = batchDispatchRetryPolicy;
+        }
+        
+        public static void OverrideBatchDispatchRetryResilienceStrategy(this IMessageHandlerContext context, ResiliencePipeline batchDispatchRetryResiliencePipeline)
+        {
+            ArgumentNullException.ThrowIfNull(batchDispatchRetryResiliencePipeline);
+
+            var overrides = context.Extensions.Get<DispatchRetriesOverrides>(Constants.Overrides);
+            overrides.BatchDispatchResiliencePipelineOverride = batchDispatchRetryResiliencePipeline;
         }
     }
 }
