@@ -10,7 +10,7 @@
     <PackageReference Include="ApprovalTests" Version="6.0.0" />
     <PackageReference Include="ApprovalUtilities" Version="7.0.0" />
     <PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.11.1" />
-    <PackageReference Include="Npgsql" Version="8.0.5" />
+    <PackageReference Include="Npgsql" Version="10.0.2" />
     <PackageReference Include="NServiceBus.AcceptanceTesting" Version="9.2.10" />
     <PackageReference Include="NServiceBus.Persistence.Sql" Version="8.1.0" />
     <PackageReference Include="NUnit" Version="4.5.1" />
