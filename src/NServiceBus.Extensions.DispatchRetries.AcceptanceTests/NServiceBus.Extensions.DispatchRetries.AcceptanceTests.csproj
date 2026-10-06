@@ -7,8 +7,6 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <PackageReference Include="ApprovalTests" Version="7.0.0" />
-    <PackageReference Include="ApprovalUtilities" Version="7.0.0" />
     <PackageReference Include="Microsoft.NET.Test.Sdk" Version="18.10.1" />
     <PackageReference Include="Npgsql" Version="10.0.3" />
     <PackageReference Include="NServiceBus.AcceptanceTesting" Version="10.2.9" />
