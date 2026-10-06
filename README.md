@@ -209,6 +209,15 @@ When dispatching messages, using either `IMessageSession` or `IEndpointInstance`
 
 Using a package manager, add a nuget reference to [NServiceBus.Extensions.DispatchRetries](https://www.nuget.org/packages/NServiceBus.Extensions.DispatchRetries/).
 
+### Compatibility
+
+| NServiceBus.Extensions.DispatchRetries | NServiceBus | Target framework |
+|----------------------------------------|-------------|------------------|
+| 4.x                                    | 10.x        | .NET 10          |
+| 3.x                                    | 9.x         | .NET 8           |
+| 2.x                                    | 8.x         | .NET 6           |
+| 1.x                                    | 7.x         | .NET Standard 2.0 |
+
 ---
 
 Icon [Mail by Flatart](https://thenounproject.com/search/?q=Retry&i=2886080) from the Noun Project

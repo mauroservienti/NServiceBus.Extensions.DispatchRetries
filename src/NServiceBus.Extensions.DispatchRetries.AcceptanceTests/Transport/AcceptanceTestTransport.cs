@@ -29,35 +29,6 @@
             return infrastructure;
         }
 
-        [Obsolete("Obsolete marker to make the code compile", false)]
-#pragma warning disable CS0809 // Obsolete member overrides non-obsolete member
-        public override string ToTransportAddress(QueueAddress address)
-#pragma warning restore CS0809 // Obsolete member overrides non-obsolete member
-        {
-            var baseAddress = address.BaseAddress;
-            ThrowForBadPath(baseAddress, "endpoint name");
-
-            var discriminator = address.Discriminator;
-
-            if (!string.IsNullOrEmpty(discriminator))
-            {
-                ThrowForBadPath(discriminator, "endpoint discriminator");
-
-                baseAddress += "-" + discriminator;
-            }
-
-            var qualifier = address.Qualifier;
-
-            if (!string.IsNullOrEmpty(qualifier))
-            {
-                ThrowForBadPath(qualifier, "address qualifier");
-
-                baseAddress += "-" + qualifier;
-            }
-
-            return baseAddress;
-        }
-
         public override IReadOnlyCollection<TransportTransactionMode> GetSupportedTransactionModes()
         {
             return new[]
