@@ -1,8 +1,6 @@
 using System;
 using System.Linq;
 using System.Threading.Tasks;
-using ApprovalTests;
-using ApprovalTests.Reporters;
 using NServiceBus.AcceptanceTesting;
 using NServiceBus.AttributeRouting.AcceptanceTests;
 using NServiceBus.Extensions.DispatchRetries.Behaviors;
@@ -19,7 +17,6 @@ namespace NServiceBus.Extensions.DispatchRetries.AcceptanceTests
         private static int _numberOfPollyRetriesWithResilienceStrategy = 0;
         
         [Test]
-        [UseReporter(typeof(DiffReporter))]
         public async Task should_be_retried_according_to_resilience_pipeline_and_log_warning()
         {
             var context = await Scenario.Define<Context>()
@@ -36,7 +33,7 @@ namespace NServiceBus.Extensions.DispatchRetries.AcceptanceTests
 
             
             var warning = context.Logs.Single(l=>l.Level== LogLevel.Warn && l.LoggerName.EndsWith(nameof(BatchDispatchRetriesBehavior)));
-            Approvals.Verify(warning.Message);
+            Approver.Verify(warning.Message);
             
             Assert.That(context.MessageReceived, Is.True);
             Assert.That(_numberOfPollyRetriesWithPolicy, Is.EqualTo(0));
